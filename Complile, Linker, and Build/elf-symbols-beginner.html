@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELF Symbols – Beginner Friendly Notes</title>
+<style>
+  :root {
+    --bg: #f8f9fc;
+    --card: #ffffff;
+    --accent: #5c6bc0;
+    --accent2: #0288d1;
+    --accent3: #388e3c;
+    --accent4: #f57c00;
+    --accent5: #d32f2f;
+    --text: #1a1a2e;
+    --muted: #666;
+    --border: #e0e0e0;
+    --code-bg: #1e1e2e;
+    --light-blue: #e3f2fd;
+    --light-green: #e8f5e9;
+    --light-yellow: #fff8e1;
+    --light-red: #fce4ec;
+    --light-purple: #ede7f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(135deg, #3949ab, #1565c0, #0277bd);
+    color: white;
+    padding: 50px 30px 40px;
+    text-align: center;
+  }
+  .hero .tag {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 20px;
+    display: inline-block;
+    padding: 4px 16px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .hero h1 { font-size: 2rem; font-weight: 800; margin-bottom: 10px; line-height: 1.3; }
+  .hero .sub { font-size: 1rem; opacity: 0.85; margin-bottom: 18px; }
+  .hero .byline {
+    display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;
+    font-size: 13px; opacity: 0.75;
+  }
+
+  /* ── LAYOUT ── */
+  .container { max-width: 860px; margin: 0 auto; padding: 0 20px 60px; }
+
+  /* ── ANALOGY BANNER ── */
+  .analogy-banner {
+    background: linear-gradient(135deg, #ede7f6, #e3f2fd);
+    border-left: 5px solid var(--accent);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 30px 0 10px;
+    font-size: 15px;
+  }
+  .analogy-banner .label {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 6px;
+  }
+
+  /* ── SECTION HEADERS ── */
+  .sec-header {
+    display: flex; align-items: center; gap: 14px;
+    margin: 48px 0 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--border);
+  }
+  .sec-header .num {
+    background: var(--accent);
+    color: white; font-weight: 800; font-size: 14px;
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .sec-header h2 { font-size: 1.4rem; font-weight: 800; color: var(--text); }
+  .sec-header .emoji { font-size: 1.5rem; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .card h3 {
+    font-size: 1.05rem; font-weight: 700;
+    color: var(--accent); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card p { font-size: 15px; margin-bottom: 10px; color: #333; }
+  .card ul, .card ol { padding-left: 22px; font-size: 15px; color: #333; }
+  .card li { margin-bottom: 8px; }
+
+  /* ── CALLOUT BOXES ── */
+  .callout {
+    border-radius: 10px; padding: 16px 20px;
+    margin: 14px 0; font-size: 14.5px;
+    border-left: 5px solid;
+  }
+  .callout .callout-title {
+    font-weight: 700; font-size: 13px;
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .callout.blue  { background: var(--light-blue);   border-color: var(--accent2); color: #01579b; }
+  .callout.blue .callout-title { color: var(--accent2); }
+  .callout.green { background: var(--light-green);  border-color: var(--accent3); color: #1b5e20; }
+  .callout.green .callout-title { color: var(--accent3); }
+  .callout.yellow{ background: var(--light-yellow); border-color: var(--accent4); color: #e65100; }
+  .callout.yellow .callout-title { color: var(--accent4); }
+  .callout.red   { background: var(--light-red);    border-color: var(--accent5); color: #b71c1c; }
+  .callout.red .callout-title { color: var(--accent5); }
+  .callout.purple{ background: var(--light-purple); border-color: var(--accent);  color: #311b92; }
+  .callout.purple .callout-title { color: var(--accent); }
+
+  /* ── CODE ── */
+  pre {
+    background: var(--code-bg);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-size: 13.5px;
+    line-height: 1.65;
+    margin: 12px 0;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    color: #cdd6f4;
+  }
+  code {
+    font-family: 'Consolas', 'Fira Code', monospace;
+    background: #e8eaf6; color: #3949ab;
+    padding: 2px 7px; border-radius: 5px; font-size: 13px;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  .kw   { color: #cba6f7; } /* keyword */
+  .fn   { color: #89dceb; } /* function */
+  .num  { color: #fab387; } /* number */
+  .str  { color: #a6e3a1; } /* string */
+  .cmt  { color: #6c7086; font-style: italic; } /* comment */
+  .hl   { color: #f38ba8; } /* highlight/error */
+  .ok   { color: #a6e3a1; } /* ok/good */
+  .nm-g { color: #89b4fa; } /* nm global */
+  .nm-l { color: #a6e3a1; } /* nm local */
+  .nm-w { color: #fab387; } /* nm weak */
+  .nm-u { color: #f38ba8; } /* nm undef */
+
+  /* ── TABLES ── */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 14px 0; }
+  th {
+    background: var(--accent); color: white;
+    padding: 10px 14px; text-align: left;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #f5f5f5; }
+
+  /* ── 2-COLUMN GRID ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+  @media(max-width:620px){ .grid2 { grid-template-columns: 1fr; } }
+
+  /* ── STEP LIST ── */
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 16px; font-size: 15px; color: #333;
+  }
+  .steps li::before {
+    content: counter(step);
+    background: var(--accent2); color: white;
+    font-weight: 800; font-size: 13px;
+    min-width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+
+  /* ── DIAGRAMS ── */
+  .diagram-wrap {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 18px 0;
+    overflow-x: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .diagram-title {
+    text-align: center; font-size: 12.5px;
+    color: var(--muted); margin-top: 12px; font-style: italic;
+  }
+
+  /* ── BADGE PILLS ── */
+  .pill {
+    display: inline-block; padding: 3px 12px;
+    border-radius: 20px; font-size: 12px; font-weight: 700;
+    margin: 2px;
+  }
+  .pill.global { background:#e8eaf6; color:#3949ab; border: 1px solid #9fa8da; }
+  .pill.local  { background:#e8f5e9; color:#388e3c; border: 1px solid #a5d6a7; }
+  .pill.weak   { background:#fff8e1; color:#f57c00; border: 1px solid #ffcc80; }
+  .pill.unique { background:#fce4ec; color:#c2185b; border: 1px solid #f48fb1; }
+  .pill.hidden { background:#ffebee; color:#d32f2f; border: 1px solid #ef9a9a; }
+  .pill.defvis { background:#e3f2fd; color:#0277bd; border: 1px solid #81d4fa; }
+
+  /* ── TOC ── */
+  .toc {
+    background: white; border: 1px solid var(--border);
+    border-left: 5px solid var(--accent);
+    border-radius: 10px; padding: 22px 26px;
+    margin: 28px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .toc h2 { font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px; }
+  .toc ol { padding-left: 20px; }
+  .toc li { margin-bottom: 6px; }
+  .toc a { color: var(--accent2); text-decoration: none; font-size: 14.5px; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ── SUMMARY BOX ── */
+  .summary {
+    background: linear-gradient(135deg, #e8eaf6, #e3f2fd);
+    border: 2px solid var(--accent);
+    border-radius: 14px; padding: 28px;
+    margin: 28px 0;
+  }
+  .summary h3 { font-size: 1.1rem; color: var(--accent); margin-bottom: 16px; }
+  .summary li { margin-bottom: 10px; font-size: 15px; color: #1a1a2e; }
+
+  footer {
+    text-align: center; color: var(--muted);
+    font-size: 12px; margin-top: 50px;
+    padding-top: 20px; border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<div class="hero">
+  <div class="tag">🎓 Beginner-Friendly Notes</div>
+  <h1>How Linux ELF Symbols Work</h1>
+  <div class="sub">A plain-English guide — no prior knowledge needed!</div>
+  <div class="byline">
+    <span>📹 Talk by Anders Schau Knatten</span>
+    <span>🏖️ C++ on Sea 2024</span>
+    <span>⏱️ 1h 01m</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ══════════ ANALOGY INTRO ══════════ -->
+<div class="analogy-banner">
+  <div class="label">🧠 Big Picture Analogy — Start Here!</div>
+  Imagine writing a <strong>big book</strong> where each chapter is written by a different author in a separate room. Each author writes their chapter without seeing the others. When the book is assembled, an <strong>editor (the linker)</strong> stitches everything together. But during writing, when one author says "see page 47", they don't know what the final page number will be — so they write a sticky note: <em>"figure out the real page number later."</em><br><br>
+  That's <em>exactly</em> how C/C++ compilation works. <strong>Symbols</strong> are those page-reference names. <strong>Relocations</strong> are those sticky notes. The <strong>linker</strong> is the editor who resolves everything.
+</div>
+
+<!-- ══════════ TOC ══════════ -->
+<div class="toc">
+  <h2>📋 What You'll Learn</h2>
+  <ol>
+    <li><a href="#s1">What is a Symbol? (The Simple Answer)</a></li>
+    <li><a href="#s2">How Programs Are Built — Step by Step</a></li>
+    <li><a href="#s3">What's Inside an Object File?</a></li>
+    <li><a href="#s4">Relocations — "Fill This In Later"</a></li>
+    <li><a href="#s5">Symbol Binding — Who Can See What?</a></li>
+    <li><a href="#s6">The <code>static</code> Keyword & Internal Linkage</a></li>
+    <li><a href="#s7">Templates & Member Functions — Weak Symbols</a></li>
+    <li><a href="#s8">The One Definition Rule (ODR) — Watch Out!</a></li>
+    <li><a href="#s9">Weak Symbols — Making Overridable Functions</a></li>
+    <li><a href="#s10">Dynamic Libraries (.so files) & Visibility</a></li>
+    <li><a href="#s11">Your Three Symbol Tables</a></li>
+    <li><a href="#s12">Who Gets a Symbol? Quick Rules</a></li>
+    <li><a href="#s13">Tools to Inspect Your Binaries</a></li>
+    <li><a href="#s14">Final Summary</a></li>
+    <li><a href="#s15">🎤 Interview Questions &amp; Model Answers</a>
+      <ul style="margin-top:6px; padding-left:18px;">
+        <li><a href="#s15" style="color:#388e3c;">🟢 Beginner (Q1–Q6)</a></li>
+        <li><a href="#s15" style="color:#f57c00;">🟡 Intermediate (Q7–Q14)</a></li>
+        <li><a href="#s15" style="color:#c62828;">🔴 Advanced (Q15–Q20)</a></li>
+        <li><a href="#s15" style="color:#3949ab;">⚡ Quick-Fire Round (15 Qs)</a></li>
+        <li><a href="#s15" style="color:#6a1b9a;">🧩 Tricky Scenario Questions (A–C)</a></li>
+      </ul>
+    </li>
+  </ol>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 1 ══════════════════════════════ -->
+<div class="sec-header" id="s1">
+  <div class="num">1</div>
+  <span class="emoji">🏷️</span>
+  <h2>What is a Symbol? (The Simple Answer)</h2>
+</div>
+
+<div class="card">
+  <h3>🔤 A Symbol is Just a Name + a Location</h3>
+  <p>Think of a symbol like an <strong>entry in a phonebook</strong>. It has a <em>name</em> (like "John Smith") and an <em>address</em> (where to find it in the binary).</p>
+  <p>When you write:</p>
+<pre><span class="kw">int</span> value = <span class="num">42</span>;
+<span class="kw">int</span> get_value() { <span class="kw">return</span> value; }</pre>
+  <p>The compiler creates two symbols in the binary:</p>
+  <ul>
+    <li>📍 <code>value</code> → "this variable lives at byte offset 0 in the data section"</li>
+    <li>📍 <code>get_value</code> → "this function lives at byte offset 0 in the code section"</li>
+  </ul>
+</div>
+
+<div class="callout blue">
+  <div class="callout-title">💡 Why do we need symbols?</div>
+  Your program is split into many files. When <code>main.c</code> wants to call <code>get_value()</code> which is in <code>values.c</code>, it needs to know <em>where</em> that function is. Symbols provide that directory/lookup — without them, files can't find each other!
+</div>
+
+<div class="callout yellow">
+  <div class="callout-title">⚡ When do you care about symbols in real life?</div>
+  <ul style="margin:0; padding-left:20px;">
+    <li>You get <code>undefined reference to 'get_value'</code> → missing symbol</li>
+    <li>You get <code>multiple definition of 'value'</code> → duplicate symbol</li>
+    <li>You're building a library and want to hide private functions from users</li>
+  </ul>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 2 ══════════════════════════════ -->
+<div class="sec-header" id="s2">
+  <div class="num">2</div>
+  <span class="emoji">🏗️</span>
+  <h2>How Programs Are Built — Step by Step</h2>
+</div>
+
+<div class="card">
+  <h3>🔄 The Build Pipeline</h3>
+  <p>Building a C/C++ program has <strong>two big stages</strong>: <em>compiling</em> and <em>linking</em>.</p>
+</div>
+
+<!-- DIAGRAM: simple build pipeline -->
+<div class="diagram-wrap">
+<svg width="740" height="320" viewBox="0 0 740 320">
+  <defs>
+    <marker id="a1" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#5c6bc0"/>
+    </marker>
+    <marker id="a2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#388e3c"/>
+    </marker>
+  </defs>
+
+  <!-- Stage labels -->
+  <rect x="0" y="0" width="740" height="24" rx="0" fill="#e8eaf6"/>
+  <text x="185" y="16" text-anchor="middle" fill="#5c6bc0" font-size="11" font-weight="bold">COMPILE STAGE (isolated per file)</text>
+  <text x="560" y="16" text-anchor="middle" fill="#388e3c" font-size="11" font-weight="bold">LINK STAGE</text>
+  <line x1="370" y1="0" x2="370" y2="320" stroke="#ccc" stroke-width="1" stroke-dasharray="6,4"/>
+
+  <!-- Source file 1 -->
+  <rect x="20" y="40" width="140" height="70" rx="10" fill="#ede7f6" stroke="#7e57c2" stroke-width="1.5"/>
+  <text x="90" y="62" text-anchor="middle" fill="#4527a0" font-size="13" font-weight="bold">values.c</text>
+  <text x="90" y="80" text-anchor="middle" fill="#555" font-size="11">int value = 42;</text>
+  <text x="90" y="96" text-anchor="middle" fill="#555" font-size="11">int get_value(){...}</text>
+
+  <!-- Source file 2 -->
+  <rect x="20" y="130" width="140" height="70" rx="10" fill="#ede7f6" stroke="#7e57c2" stroke-width="1.5"/>
+  <text x="90" y="152" text-anchor="middle" fill="#4527a0" font-size="13" font-weight="bold">main.c</text>
+  <text x="90" y="170" text-anchor="middle" fill="#555" font-size="11">int main() {</text>
+  <text x="90" y="186" text-anchor="middle" fill="#555" font-size="11">  return get_value();</text>
+
+  <!-- Compiler box 1 -->
+  <rect x="195" y="53" width="80" height="44" rx="8" fill="#5c6bc0" stroke="none"/>
+  <text x="235" y="72" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Compiler</text>
+  <text x="235" y="88" text-anchor="middle" fill="#c5cae9" font-size="10">(gcc/clang)</text>
+
+  <!-- Compiler box 2 -->
+  <rect x="195" y="143" width="80" height="44" rx="8" fill="#5c6bc0" stroke="none"/>
+  <text x="235" y="162" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Compiler</text>
+  <text x="235" y="178" text-anchor="middle" fill="#c5cae9" font-size="10">(gcc/clang)</text>
+
+  <!-- Arrows source → compiler -->
+  <line x1="160" y1="75" x2="193" y2="75" stroke="#5c6bc0" stroke-width="1.5" marker-end="url(#a1)"/>
+  <line x1="160" y1="165" x2="193" y2="165" stroke="#5c6bc0" stroke-width="1.5" marker-end="url(#a1)"/>
+
+  <!-- Object files -->
+  <rect x="302" y="33" width="150" height="100" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/>
+  <text x="377" y="55" text-anchor="middle" fill="#1b5e20" font-size="13" font-weight="bold">values.o</text>
+  <rect x="315" y="63" width="55" height="22" rx="5" fill="#c8e6c9"/>
+  <text x="343" y="78" text-anchor="middle" fill="#2e7d32" font-size="11">.text 📝</text>
+  <rect x="378" y="63" width="60" height="22" rx="5" fill="#fff9c4"/>
+  <text x="408" y="78" text-anchor="middle" fill="#827717" font-size="11">.data 📦</text>
+  <rect x="315" y="92" width="125" height="22" rx="5" fill="#e3f2fd"/>
+  <text x="378" y="107" text-anchor="middle" fill="#0277bd" font-size="11">.symtab 🗂️</text>
+
+  <rect x="302" y="150" width="150" height="100" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/>
+  <text x="377" y="172" text-anchor="middle" fill="#1b5e20" font-size="13" font-weight="bold">main.o</text>
+  <rect x="315" y="180" width="55" height="22" rx="5" fill="#c8e6c9"/>
+  <text x="343" y="195" text-anchor="middle" fill="#2e7d32" font-size="11">.text 📝</text>
+  <rect x="378" y="180" width="60" height="22" rx="5" fill="#ffebee"/>
+  <text x="408" y="195" text-anchor="middle" fill="#c62828" font-size="10">❓UNDEF</text>
+  <rect x="315" y="209" width="125" height="22" rx="5" fill="#e3f2fd"/>
+  <text x="378" y="224" text-anchor="middle" fill="#0277bd" font-size="11">.symtab 🗂️</text>
+
+  <!-- Arrows compiler → object files -->
+  <line x1="275" y1="75" x2="300" y2="75" stroke="#388e3c" stroke-width="1.5" marker-end="url(#a2)"/>
+  <line x1="275" y1="165" x2="300" y2="175" stroke="#388e3c" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Linker -->
+  <rect x="490" y="95" width="100" height="60" rx="10" fill="#1565c0" stroke="none"/>
+  <text x="540" y="121" text-anchor="middle" fill="white" font-size="13" font-weight="bold">Linker</text>
+  <text x="540" y="140" text-anchor="middle" fill="#90caf9" font-size="10">( ld / lld )</text>
+
+  <line x1="452" y1="83" x2="488" y2="115" stroke="#388e3c" stroke-width="1.5" marker-end="url(#a2)"/>
+  <line x1="452" y1="185" x2="488" y2="135" stroke="#388e3c" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Executable -->
+  <rect x="622" y="70" width="110" height="130" rx="10" fill="#e3f2fd" stroke="#0277bd" stroke-width="2"/>
+  <text x="677" y="97" text-anchor="middle" fill="#01579b" font-size="13" font-weight="bold">./program</text>
+  <rect x="633" y="107" width="88" height="22" rx="5" fill="#c8e6c9"/>
+  <text x="677" y="122" text-anchor="middle" fill="#2e7d32" font-size="11">.text (code)</text>
+  <rect x="633" y="135" width="88" height="22" rx="5" fill="#fff9c4"/>
+  <text x="677" y="150" text-anchor="middle" fill="#827717" font-size="11">.data (data)</text>
+  <rect x="633" y="163" width="88" height="22" rx="5" fill="#e3f2fd"/>
+  <text x="677" y="178" text-anchor="middle" fill="#0277bd" font-size="11">.symtab</text>
+
+  <line x1="590" y1="125" x2="620" y2="125" stroke="#0277bd" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Notes below -->
+  <text x="185" y="270" text-anchor="middle" fill="#666" font-size="11">Each file compiled alone</text>
+  <text x="185" y="286" text-anchor="middle" fill="#666" font-size="11">(can't see other files!)</text>
+  <text x="560" y="270" text-anchor="middle" fill="#666" font-size="11">Linker merges everything,</text>
+  <text x="560" y="286" text-anchor="middle" fill="#666" font-size="11">resolves all references</text>
+</svg>
+<div class="diagram-title">Fig 1: The two stages of building a C/C++ program</div>
+</div>
+
+<div class="card">
+  <h3>📝 What "Separate Compilation" Means</h3>
+  <ul class="steps">
+    <li>Each <code>.c</code> or <code>.cpp</code> file is compiled <strong>completely independently</strong>. The compiler can't see into other files.</li>
+    <li>Each file produces an <strong>object file</strong> (<code>.o</code>) — a bundle of machine code + data + a symbol table.</li>
+    <li>The <strong>linker</strong> then takes all <code>.o</code> files and merges them into a final executable.</li>
+  </ul>
+  <div class="callout green">
+    <div class="callout-title">✅ Benefit</div>
+    If you have 1000 source files and you change only one, you only need to recompile that one file and re-link. Huge speed win for big projects!
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 3 ══════════════════════════════ -->
+<div class="sec-header" id="s3">
+  <div class="num">3</div>
+  <span class="emoji">📦</span>
+  <h2>What's Inside an Object File?</h2>
+</div>
+
+<div class="card">
+  <h3>🗂️ An Object File Has Compartments Called "Sections"</h3>
+  <p>Think of an object file like a filing cabinet with labelled drawers:</p>
+</div>
+
+<!-- DIAGRAM: Object file sections -->
+<div class="diagram-wrap">
+<svg width="680" height="280" viewBox="0 0 680 280">
+  <!-- Filing cabinet outline -->
+  <rect x="80" y="20" width="520" height="240" rx="12" fill="#f5f5f5" stroke="#9e9e9e" stroke-width="2"/>
+  <text x="340" y="48" text-anchor="middle" fill="#333" font-size="14" font-weight="bold">values.o  (Object File)</text>
+
+  <!-- Drawer 1: .text -->
+  <rect x="100" y="60" width="220" height="55" rx="8" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/>
+  <text x="120" y="81" fill="#2e7d32" font-size="13" font-weight="bold">.text  📝</text>
+  <text x="120" y="98" fill="#555" font-size="11">Raw machine code (CPU instructions)</text>
+  <text x="120" y="111" fill="#555" font-size="11">e.g. push rbp; mov eax, [value]; ret</text>
+
+  <!-- Drawer 2: .data -->
+  <rect x="100" y="125" width="220" height="55" rx="8" fill="#fff9c4" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="120" y="146" fill="#f57f17" font-size="13" font-weight="bold">.data  📦</text>
+  <text x="120" y="163" fill="#555" font-size="11">Initialized global variables</text>
+  <text x="120" y="176" fill="#555" font-size="11">e.g. 0x2A 0x00 0x00 0x00 (= 42)</text>
+
+  <!-- Drawer 3: .symtab -->
+  <rect x="340" y="60" width="240" height="120" rx="8" fill="#e3f2fd" stroke="#0277bd" stroke-width="1.5"/>
+  <text x="360" y="81" fill="#01579b" font-size="13" font-weight="bold">.symtab  🗂️ (Symbol Table)</text>
+  <text x="360" y="98" fill="#555" font-size="11">Directory of all named things:</text>
+  <text x="360" y="114" fill="#0288d1" font-size="11">● value  → .data, offset 0,  4 bytes</text>
+  <text x="360" y="130" fill="#0288d1" font-size="11">● get_value → .text, offset 0</text>
+  <text x="360" y="150" fill="#888" font-size="10">NOT mixed in with code/data!</text>
+  <text x="360" y="163" fill="#888" font-size="10">Lives in its own separate section.</text>
+
+  <!-- Drawer 4: .rela -->
+  <rect x="100" y="192" width="480" height="48" rx="8" fill="#fce4ec" stroke="#c62828" stroke-width="1.5"/>
+  <text x="120" y="212" fill="#c62828" font-size="13" font-weight="bold">.rela.text  📌 (Relocation Table)</text>
+  <text x="120" y="230" fill="#555" font-size="11">"Fix-it" notes: offset 0xA → please fill in the address of get_value here</text>
+
+  <!-- Arrow showing separation -->
+  <text x="340" y="265" text-anchor="middle" fill="#888" font-size="11" font-style="italic">Machine code, data, and symbol info are all in SEPARATE compartments</text>
+</svg>
+<div class="diagram-title">Fig 2: The four key sections inside an object file</div>
+</div>
+
+<div class="card">
+  <h3>🔑 The Most Important Insight</h3>
+  <p>The <strong>machine code</strong> in <code>.text</code> and the <strong>symbol names</strong> in <code>.symtab</code> are completely separate. This has a big consequence:</p>
+  <div class="callout blue">
+    <div class="callout-title">💡 Why this matters</div>
+    You can <strong>remove the symbol table</strong> (using a tool called <code>strip</code>) and the actual code still works! The code doesn't need its own name to run. Removing symbol names just means no one can <em>look up</em> where things are — useful for smaller, harder-to-reverse-engineer binaries.
+  </div>
+</div>
+
+<div class="card">
+  <h3>🛠️ Tool: How to See Symbols in a File</h3>
+<pre><span class="cmt"># The "nm" tool lists all symbols in a file</span>
+nm values.o
+
+<span class="cmt"># Output (read right to left):</span>
+0000000000000000 <span class="nm-g">D</span> value      <span class="cmt">← D = Data section, Global</span>
+0000000000000000 <span class="nm-g">T</span> get_value   <span class="cmt">← T = Text (code) section, Global</span>
+
+<span class="cmt"># Letters guide:</span>
+<span class="cmt">#  T = code section (Text)      t = code, local (hidden)</span>
+<span class="cmt">#  D = data section             d = data, local (hidden)</span>
+<span class="cmt">#  U = Undefined (needs to be found by linker)</span>
+<span class="cmt">#  W = Weak symbol</span></pre>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 4 ══════════════════════════════ -->
+<div class="sec-header" id="s4">
+  <div class="num">4</div>
+  <span class="emoji">📌</span>
+  <h2>Relocations — "Fill This In Later"</h2>
+</div>
+
+<div class="analogy-banner">
+  <div class="label">🍕 Real World Analogy</div>
+  Imagine writing a party invitation before you've booked the venue. You write: <em>"Party at [VENUE — TBD]"</em> and leave a sticky note: <em>"Fill in the venue address before printing."</em> A relocation is exactly that sticky note — a placeholder in machine code that says "someone please fill in this address later."
+</div>
+
+<div class="card">
+  <h3>⚙️ What Happens Step by Step</h3>
+  <ul class="steps">
+    <li>Compiler compiles <code>main.c</code>. It sees <code>get_value()</code> but doesn't know where it lives (it's in another file!).</li>
+    <li>Compiler writes the <code>call</code> instruction with <strong>zeros</strong> as the address: <code>E8 00 00 00 00</code></li>
+    <li>Compiler also writes a <strong>relocation note</strong> in <code>.rela.text</code>: "At offset 0xA, please fill in the address of <code>get_value</code>"</li>
+    <li>The <strong>linker</strong> reads all relocation notes, looks up each symbol in the symbol tables, and <strong>patches in the real addresses</strong>.</li>
+  </ul>
+</div>
+
+<!-- DIAGRAM: Before and After relocation -->
+<div class="diagram-wrap">
+<svg width="700" height="240" viewBox="0 0 700 240">
+  <defs>
+    <marker id="b1" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#388e3c"/>
+    </marker>
+    <marker id="b2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#d32f2f"/>
+    </marker>
+  </defs>
+
+  <!-- BEFORE box -->
+  <rect x="10" y="20" width="290" height="190" rx="10" fill="#fff" stroke="#d32f2f" stroke-width="1.5"/>
+  <rect x="10" y="20" width="290" height="32" rx="10" fill="#ffebee"/>
+  <text x="155" y="41" text-anchor="middle" fill="#c62828" font-size="13" font-weight="bold">⚠️  BEFORE Linking  (main.o)</text>
+
+  <text x="30" y="75" fill="#555" font-size="12">call instruction machine code:</text>
+  <rect x="30" y="85" width="250" height="34" rx="6" fill="#f5f5f5" stroke="#ccc"/>
+  <text x="40" y="99" fill="#333" font-size="12" font-family="monospace">E8</text>
+  <rect x="60" y="87" width="100" height="28" rx="4" fill="#ffcdd2"/>
+  <text x="110" y="103" text-anchor="middle" fill="#c62828" font-size="11" font-weight="bold">00 00 00 00</text>
+  <text x="170" y="99" fill="#888" font-size="11">  ← zeros!</text>
+
+  <rect x="30" y="130" width="255" height="55" rx="6" fill="#fff9c4" stroke="#f9a825"/>
+  <text x="40" y="148" fill="#f57f17" font-size="12" font-weight="bold">📌 Relocation note:</text>
+  <text x="40" y="165" fill="#555" font-size="11">"At offset 0xA, put the</text>
+  <text x="40" y="179" fill="#555" font-size="11"> address of get_value"</text>
+
+  <!-- Arrow -->
+  <rect x="320" y="100" width="80" height="45" rx="10" fill="#5c6bc0"/>
+  <text x="360" y="119" text-anchor="middle" fill="white" font-size="12" font-weight="bold">Linker</text>
+  <text x="360" y="135" text-anchor="middle" fill="#c5cae9" font-size="10">patches it ✓</text>
+  <line x1="300" y1="122" x2="318" y2="122" stroke="#888" stroke-width="1.5" marker-end="url(#b1)"/>
+  <line x1="400" y1="122" x2="418" y2="122" stroke="#388e3c" stroke-width="1.5" marker-end="url(#b1)"/>
+
+  <!-- AFTER box -->
+  <rect x="420" y="20" width="265" height="190" rx="10" fill="#fff" stroke="#388e3c" stroke-width="1.5"/>
+  <rect x="420" y="20" width="265" height="32" rx="10" fill="#e8f5e9"/>
+  <text x="553" y="41" text-anchor="middle" fill="#1b5e20" font-size="13" font-weight="bold">✅  AFTER Linking  (./program)</text>
+
+  <text x="438" y="75" fill="#555" font-size="12">call instruction machine code:</text>
+  <rect x="438" y="85" width="230" height="34" rx="6" fill="#f5f5f5" stroke="#ccc"/>
+  <text x="448" y="99" fill="#333" font-size="12" font-family="monospace">E8</text>
+  <rect x="468" y="87" width="100" height="28" rx="4" fill="#c8e6c9"/>
+  <text x="518" y="103" text-anchor="middle" fill="#2e7d32" font-size="11" font-weight="bold">b3 02 00 00</text>
+  <text x="575" y="99" fill="#888" font-size="11">  ✓ real!</text>
+
+  <rect x="438" y="130" width="230" height="55" rx="6" fill="#e8f5e9" stroke="#388e3c"/>
+  <text x="448" y="148" fill="#2e7d32" font-size="12" font-weight="bold">✅ Resolved!</text>
+  <text x="448" y="165" fill="#555" font-size="11">No more sticky notes.</text>
+  <text x="448" y="179" fill="#555" font-size="11">Real relative address filled in.</text>
+</svg>
+<div class="diagram-title">Fig 3: Before and after the linker resolves a relocation</div>
+</div>
+
+<div class="callout red">
+  <div class="callout-title">❌ What if the symbol is missing?</div>
+  If you strip the symbol table from <code>values.o</code> before linking, the linker can't find <code>get_value</code>. You get the famous error:<br>
+  <code style="background:#fce4ec; color:#c62828; display:block; margin-top:8px; padding:8px; border-radius:6px;">undefined reference to 'get_value'</code>
+  Now you know exactly <em>why</em> this happens!
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 5 ══════════════════════════════ -->
+<div class="sec-header" id="s5">
+  <div class="num">5</div>
+  <span class="emoji">🌐</span>
+  <h2>Symbol Binding — Who Can See What?</h2>
+</div>
+
+<div class="card">
+  <h3>👀 "Binding" = Visibility Level of a Symbol</h3>
+  <p>Every symbol has a <strong>binding type</strong> that answers the question: <em>"Can other files use this symbol?"</em></p>
+</div>
+
+<!-- DIAGRAM: 4 binding types as buildings/rooms -->
+<div class="diagram-wrap">
+<svg width="700" height="270" viewBox="0 0 700 270">
+
+  <!-- GLOBAL -->
+  <rect x="10" y="20" width="155" height="225" rx="10" fill="#ede7f6" stroke="#7e57c2" stroke-width="2"/>
+  <text x="87" y="45" text-anchor="middle" fill="#4527a0" font-size="13" font-weight="bold">GLOBAL</text>
+  <text x="87" y="63" text-anchor="middle" fill="#888" font-size="10">NM shows: T / D</text>
+  <!-- building icon -->
+  <rect x="55" y="75" width="65" height="80" rx="4" fill="#b39ddb"/>
+  <rect x="62" y="82" width="18" height="20" rx="3" fill="white"/>
+  <rect x="84" y="82" width="18" height="20" rx="3" fill="white"/>
+  <rect x="62" y="108" width="18" height="20" rx="3" fill="white"/>
+  <rect x="84" y="108" width="18" height="20" rx="3" fill="white"/>
+  <rect x="73" y="130" width="18" height="25" rx="3" fill="#7e57c2"/>
+  <!-- flag on top -->
+  <rect x="86" y="70" width="2" height="10" fill="#333"/>
+  <polygon points="88,70 100,75 88,80" fill="#e53935"/>
+  <text x="87" y="175" text-anchor="middle" fill="#4527a0" font-size="11" font-weight="bold">🏛️ Public</text>
+  <text x="87" y="191" text-anchor="middle" fill="#555" font-size="10">Visible to</text>
+  <text x="87" y="205" text-anchor="middle" fill="#555" font-size="10">all files</text>
+  <text x="87" y="221" text-anchor="middle" fill="#555" font-size="10">Only ONE allowed</text>
+  <text x="87" y="238" text-anchor="middle" fill="#7e57c2" font-size="9">int value = 42;</text>
+
+  <!-- LOCAL -->
+  <rect x="177" y="20" width="155" height="225" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="2"/>
+  <text x="255" y="45" text-anchor="middle" fill="#1b5e20" font-size="13" font-weight="bold">LOCAL</text>
+  <text x="255" y="63" text-anchor="middle" fill="#888" font-size="10">NM shows: t / d</text>
+  <!-- house icon -->
+  <polygon points="255,72 220,98 290,98" fill="#81c784"/>
+  <rect x="225" y="98" width="60" height="55" rx="3" fill="#a5d6a7"/>
+  <rect x="242" y="118" width="26" height="35" rx="3" fill="#388e3c"/>
+  <rect x="232" y="103" width="16" height="16" rx="2" fill="white"/>
+  <rect x="262" y="103" width="16" height="16" rx="2" fill="white"/>
+  <text x="255" y="175" text-anchor="middle" fill="#1b5e20" font-size="11" font-weight="bold">🏠 Private</text>
+  <text x="255" y="191" text-anchor="middle" fill="#555" font-size="10">Hidden inside</text>
+  <text x="255" y="205" text-anchor="middle" fill="#555" font-size="10">one file only</text>
+  <text x="255" y="221" text-anchor="middle" fill="#555" font-size="10">Many copies OK!</text>
+  <text x="255" y="238" text-anchor="middle" fill="#388e3c" font-size="9">static int helper();</text>
+
+  <!-- WEAK -->
+  <rect x="344" y="20" width="163" height="225" rx="10" fill="#fff8e1" stroke="#f9a825" stroke-width="2"/>
+  <text x="425" y="45" text-anchor="middle" fill="#e65100" font-size="13" font-weight="bold">WEAK</text>
+  <text x="425" y="63" text-anchor="middle" fill="#888" font-size="10">NM shows: W / w</text>
+  <!-- multiple copies icon -->
+  <rect x="385" y="82" width="45" height="55" rx="4" fill="#ffe082" stroke="#f9a825"/>
+  <rect x="400" y="90" width="45" height="55" rx="4" fill="#ffd54f" stroke="#f9a825"/>
+  <rect x="415" y="98" width="45" height="55" rx="4" fill="#ffca28" stroke="#f9a825"/>
+  <text x="438" y="118" fill="#e65100" font-size="20" font-weight="bold">W</text>
+  <text x="425" y="175" text-anchor="middle" fill="#e65100" font-size="11" font-weight="bold">📋 Many Copies OK</text>
+  <text x="425" y="191" text-anchor="middle" fill="#555" font-size="10">Linker keeps ONE,</text>
+  <text x="425" y="205" text-anchor="middle" fill="#555" font-size="10">throws others away</text>
+  <text x="425" y="221" text-anchor="middle" fill="#555" font-size="10">GLOBAL overrides it</text>
+  <text x="425" y="238" text-anchor="middle" fill="#f57f17" font-size="9">templates, member fns</text>
+
+  <!-- UNIQUE -->
+  <rect x="519" y="20" width="168" height="225" rx="10" fill="#fce4ec" stroke="#c2185b" stroke-width="2"/>
+  <text x="603" y="45" text-anchor="middle" fill="#880e4f" font-size="13" font-weight="bold">UNIQUE</text>
+  <text x="603" y="63" text-anchor="middle" fill="#888" font-size="10">NM shows: u</text>
+  <!-- snowflake icon area -->
+  <circle cx="603" cy="122" r="38" fill="#f8bbd0"/>
+  <text x="603" y="130" text-anchor="middle" fill="#c2185b" font-size="36">❄️</text>
+  <text x="603" y="175" text-anchor="middle" fill="#880e4f" font-size="11" font-weight="bold">❄️ Like Weak But...</text>
+  <text x="603" y="191" text-anchor="middle" fill="#555" font-size="10">Many copies OK</text>
+  <text x="603" y="205" text-anchor="middle" fill="#555" font-size="10">CANNOT be overridden</text>
+  <text x="603" y="221" text-anchor="middle" fill="#555" font-size="10">by a GLOBAL symbol</text>
+  <text x="603" y="238" text-anchor="middle" fill="#c2185b" font-size="9">inline variables (C++17)</text>
+</svg>
+<div class="diagram-title">Fig 4: The four ELF symbol binding types explained visually</div>
+</div>
+
+<div class="card">
+  <h3>🗺️ Quick Reference Table</h3>
+  <table>
+    <tr><th>Binding</th><th>Think of it as…</th><th>Multiple copies?</th><th>C/C++ way to get it</th></tr>
+    <tr><td><span class="pill global">GLOBAL</span></td><td>A public building</td><td>❌ Only one!</td><td>Default for normal functions/globals</td></tr>
+    <tr><td><span class="pill local">LOCAL</span></td><td>A private room in your house</td><td>✅ Yes</td><td><code>static</code> keyword or anonymous namespace</td></tr>
+    <tr><td><span class="pill weak">WEAK</span></td><td>A sticky-note definition</td><td>✅ Yes, linker picks one</td><td>Templates, member fns, <code>__attribute__((weak))</code></td></tr>
+    <tr><td><span class="pill unique">UNIQUE</span></td><td>A snowflake (unique but one)</td><td>✅ Yes, linker picks one</td><td><code>inline</code> variables (C++17)</td></tr>
+  </table>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 6 ══════════════════════════════ -->
+<div class="sec-header" id="s6">
+  <div class="num">6</div>
+  <span class="emoji">🔒</span>
+  <h2>The <code>static</code> Keyword &amp; Internal Linkage</h2>
+</div>
+
+<div class="card">
+  <h3>🤫 Making a Function "Private to This File"</h3>
+  <p>When you put <code>static</code> in front of a function or global variable <em>at file scope</em> (not inside a class), it gets <strong>LOCAL binding</strong>. This means:</p>
+  <ul>
+    <li>✅ You can use it in this file</li>
+    <li>🚫 No other file can link to it</li>
+    <li>✅ You can have the SAME name in multiple files — no conflict!</li>
+  </ul>
+<pre><span class="cmt">// values.c</span>
+<span class="kw">static</span> <span class="kw">int</span> <span class="fn">helper</span>() { <span class="kw">return</span> <span class="num">42</span>; }  <span class="cmt">← LOCAL, only this file can use it</span>
+
+<span class="cmt">// main.c</span>
+<span class="kw">static</span> <span class="kw">void</span> <span class="fn">helper</span>() { printf(<span class="str">"help\n"</span>); }  <span class="cmt">← ALSO LOCAL, different function</span>
+
+<span class="cmt">// No conflict! The linker treats these as completely separate things.</span></pre>
+</div>
+
+<div class="card">
+  <h3>🚫 The Classic Bug: Definitions in Header Files</h3>
+  <p>A common beginner mistake is putting <strong>definitions</strong> (not just declarations) in <code>.h</code> files:</p>
+<pre><span class="cmt">// ❌ WRONG — values.h with a definition</span>
+<span class="kw">int</span> value = <span class="num">42</span>;          <span class="cmt">← definition: creates storage</span>
+<span class="kw">int</span> get_value() { ... }   <span class="cmt">← definition: creates code</span>
+
+<span class="cmt">// If main.c and utils.c both #include "values.h",</span>
+<span class="cmt">// BOTH files will have their own copy of value and get_value.</span>
+<span class="cmt">// Linker error: "multiple definition of 'value'"</span></pre>
+
+<pre><span class="cmt">// ✅ CORRECT — values.h with only declarations</span>
+<span class="kw">extern</span> <span class="kw">int</span> value;     <span class="cmt">← declaration: "it exists somewhere"</span>
+<span class="kw">int</span> <span class="fn">get_value</span>();      <span class="cmt">← declaration only</span>
+
+<span class="cmt">// values.c — ONE definition lives here</span>
+<span class="kw">int</span> value = <span class="num">42</span>;
+<span class="kw">int</span> <span class="fn">get_value</span>() { <span class="kw">return</span> value; }</pre>
+</div>
+
+<div class="callout blue">
+  <div class="callout-title">💡 Declaration vs Definition</div>
+  <strong>Declaration</strong> = "Hey, this thing exists somewhere." (just tells the compiler about it)<br>
+  <strong>Definition</strong> = "Here is the actual code/data." (allocates memory, creates the symbol)
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 7 ══════════════════════════════ -->
+<div class="sec-header" id="s7">
+  <div class="num">7</div>
+  <span class="emoji">📋</span>
+  <h2>Templates &amp; Member Functions — Weak Symbols</h2>
+</div>
+
+<div class="card">
+  <h3>🤔 The Problem with Templates</h3>
+  <p>C++ templates <em>must</em> have their full definition in the header file. But if 10 different <code>.cpp</code> files include that header and use the template, each one compiles its own copy of the function body. Won't that cause "multiple definition" errors?</p>
+</div>
+
+<div class="callout green">
+  <div class="callout-title">✅ The Clever Solution: WEAK Symbols</div>
+  The compiler automatically marks template functions and class member functions (defined in headers) as <strong>WEAK</strong>. The linker rule for WEAK is: "keep one, throw away the rest." Problem solved!
+</div>
+
+<!-- DIAGRAM: Multiple TUs with same template -->
+<div class="diagram-wrap">
+<svg width="700" height="290" viewBox="0 0 700 290">
+  <defs>
+    <marker id="c1" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#5c6bc0"/>
+    </marker>
+    <marker id="c2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#388e3c"/>
+    </marker>
+    <marker id="cx" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#d32f2f"/>
+    </marker>
+  </defs>
+
+  <!-- Header file -->
+  <rect x="250" y="10" width="200" height="60" rx="8" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1.5"/>
+  <text x="350" y="32" text-anchor="middle" fill="#3949ab" font-size="12" font-weight="bold">my_template.h</text>
+  <text x="350" y="50" text-anchor="middle" fill="#555" font-size="11">template&lt;T&gt; T get_value() {…}</text>
+  <text x="350" y="63" text-anchor="middle" fill="#888" font-size="10">(must be in header!)</text>
+
+  <!-- 3 cpp files including the header -->
+  <rect x="30" y="110" width="130" height="50" rx="8" fill="#ede7f6" stroke="#7e57c2" stroke-width="1"/>
+  <text x="95" y="132" text-anchor="middle" fill="#4527a0" font-size="11" font-weight="bold">file1.cpp</text>
+  <text x="95" y="150" text-anchor="middle" fill="#555" font-size="10">#include "my_template.h"</text>
+
+  <rect x="285" y="110" width="130" height="50" rx="8" fill="#ede7f6" stroke="#7e57c2" stroke-width="1"/>
+  <text x="350" y="132" text-anchor="middle" fill="#4527a0" font-size="11" font-weight="bold">file2.cpp</text>
+  <text x="350" y="150" text-anchor="middle" fill="#555" font-size="10">#include "my_template.h"</text>
+
+  <rect x="540" y="110" width="130" height="50" rx="8" fill="#ede7f6" stroke="#7e57c2" stroke-width="1"/>
+  <text x="605" y="132" text-anchor="middle" fill="#4527a0" font-size="11" font-weight="bold">file3.cpp</text>
+  <text x="605" y="150" text-anchor="middle" fill="#555" font-size="10">#include "my_template.h"</text>
+
+  <!-- Arrows from header -->
+  <line x1="280" y1="70" x2="130" y2="108" stroke="#5c6bc0" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#c1)"/>
+  <line x1="350" y1="70" x2="350" y2="108" stroke="#5c6bc0" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#c1)"/>
+  <line x1="420" y1="70" x2="568" y2="108" stroke="#5c6bc0" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#c1)"/>
+
+  <!-- Weak symbols -->
+  <rect x="30" y="188" width="130" height="42" rx="6" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="95" y="207" text-anchor="middle" fill="#e65100" font-size="11" font-weight="bold">get_value [W]</text>
+  <text x="95" y="221" text-anchor="middle" fill="#888" font-size="10">WEAK copy #1</text>
+
+  <rect x="285" y="188" width="130" height="42" rx="6" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="350" y="207" text-anchor="middle" fill="#e65100" font-size="11" font-weight="bold">get_value [W]</text>
+  <text x="350" y="221" text-anchor="middle" fill="#888" font-size="10">WEAK copy #2</text>
+
+  <rect x="540" y="188" width="130" height="42" rx="6" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="605" y="207" text-anchor="middle" fill="#e65100" font-size="11" font-weight="bold">get_value [W]</text>
+  <text x="605" y="221" text-anchor="middle" fill="#888" font-size="10">WEAK copy #3</text>
+
+  <line x1="95" y1="162" x2="95" y2="186" stroke="#f9a825" stroke-width="1.2" marker-end="url(#c2)"/>
+  <line x1="350" y1="162" x2="350" y2="186" stroke="#f9a825" stroke-width="1.2" marker-end="url(#c2)"/>
+  <line x1="605" y1="162" x2="605" y2="186" stroke="#f9a825" stroke-width="1.2" marker-end="url(#c2)"/>
+
+  <!-- Linker keeps one, discards others -->
+  <text x="350" y="256" text-anchor="middle" fill="#555" font-size="12">Linker: "I see 3 WEAK copies. I'll keep one and discard the rest."</text>
+
+  <!-- X marks on 2 and 3 -->
+  <line x1="285" y1="188" x2="415" y2="230" stroke="#d32f2f" stroke-width="2"/>
+  <line x1="415" y1="188" x2="285" y2="230" stroke="#d32f2f" stroke-width="2"/>
+  <line x1="540" y1="188" x2="670" y2="230" stroke="#d32f2f" stroke-width="2"/>
+  <line x1="670" y1="188" x2="540" y2="230" stroke="#d32f2f" stroke-width="2"/>
+
+  <circle cx="95" cy="209" r="14" fill="none" stroke="#388e3c" stroke-width="2.5"/>
+  <text x="95" y="215" text-anchor="middle" fill="#2e7d32" font-size="16">✓</text>
+
+  <text x="350" y="280" text-anchor="middle" fill="#388e3c" font-size="12" font-weight="bold">Final binary has exactly ONE copy of get_value ✅</text>
+</svg>
+<div class="diagram-title">Fig 5: Weak symbols let the linker deduplicate template instantiations</div>
+</div>
+
+<div class="card">
+  <h3>🔧 One Section Per Weak Symbol — How the Linker Discards Them</h3>
+  <p>You might wonder: the linker merges entire sections at once — how can it throw away individual functions?</p>
+  <p>The compiler is smart about this. For each template instantiation or member function definition, it creates a <strong>brand new section</strong> just for that one function. The linker can then discard entire sections.</p>
+<pre><span class="cmt"># objdump shows separate sections for each weak function</span>
+.text.MyClass::get_value()      <span class="cmt">← its own private section</span>
+.text._Z8get_valueIiEv          <span class="cmt">← another private section (template int)</span>
+.text.main                      <span class="cmt">← normal main section</span></pre>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 8 ══════════════════════════════ -->
+<div class="sec-header" id="s8">
+  <div class="num">8</div>
+  <span class="emoji">⚠️</span>
+  <h2>The One Definition Rule (ODR) — Watch Out!</h2>
+</div>
+
+<div class="card">
+  <h3>📏 The Rule in Plain English</h3>
+  <p>If a function or variable has multiple copies (weak symbols), they <strong>must all be exactly identical</strong>. The linker picks one and throws the rest away — it does <em>not</em> check if they're the same.</p>
+</div>
+
+<div class="callout red">
+  <div class="callout-title">💥 The Danger — Silent Undefined Behavior</div>
+  If two files include the same header but one of them has a <code>#define</code> that changes the function body, you have an ODR violation. The linker silently picks one version. Your program may behave randomly — and no warning is shown!
+<pre style="margin-top:10px; background:#1e1e2e;"><span class="cmt">// ❌ NEVER do this in a header used by multiple files</span>
+<span class="hl">#ifdef NEW_VERSION
+  template&lt;typename T&gt; T get_value() { return 2; }
+#else
+  template&lt;typename T&gt; T get_value() { return 1; }
+#endif</span>
+
+<span class="cmt">// file1.cpp → defines NEW_VERSION → get_value returns 2</span>
+<span class="cmt">// file2.cpp → no NEW_VERSION   → get_value returns 1</span>
+<span class="cmt">// Linker picks one silently. The other is GONE.</span>
+<span class="cmt">// This is UNDEFINED BEHAVIOR. Your program is broken.</span></pre>
+</div>
+
+<div class="callout green">
+  <div class="callout-title">✅ Safe Rule</div>
+  All copies of a weak symbol across your entire project must have <strong>identical source code</strong>. Don't change template bodies with macros or ifdefs.
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 9 ══════════════════════════════ -->
+<div class="sec-header" id="s9">
+  <div class="num">9</div>
+  <span class="emoji">🔌</span>
+  <h2>Weak Symbols — Making Overridable Functions</h2>
+</div>
+
+<div class="card">
+  <h3>🛠️ A Manual Use of Weak: Allow Users to Override Your Function</h3>
+  <p>You can mark any function as weak on purpose using <code>__attribute__((weak))</code>. This lets users of your library <strong>replace your default implementation</strong> with their own.</p>
+
+  <div class="callout blue">
+    <div class="callout-title">🍕 Analogy</div>
+    Imagine a pizza kit company that includes a default tomato sauce packet (WEAK). But if you make your own sauce and put it in the box, the kit uses yours instead (GLOBAL). The kit's sauce is just the fallback.
+  </div>
+
+<pre><span class="cmt">// library.c — your default (weak) implementation</span>
+Resource* <span class="fn">load_resource</span>() <span class="hl">__attribute__((weak))</span>;
+Resource* <span class="fn">load_resource</span>() {
+    <span class="kw">return</span> <span class="fn">load_from_file</span>();   <span class="cmt">← default fallback</span>
+}
+
+<span class="cmt">// user.c — user's custom version (GLOBAL, no weak attribute)</span>
+Resource* <span class="fn">load_resource</span>() {
+    <span class="kw">return</span> <span class="fn">load_from_database</span>();  <span class="cmt">← overrides the default!</span>
+}</pre>
+  <p>Linker rule: <strong>ONE GLOBAL beats ALL WEAK copies.</strong> The user's version wins.</p>
+  <p><em>Note: <code>__attribute__((weak))</code> is a Linux/GCC/Clang specific feature, not standard C++.</em></p>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 10 ══════════════════════════════ -->
+<div class="sec-header" id="s10">
+  <div class="num">10</div>
+  <span class="emoji">👁️</span>
+  <h2>Dynamic Libraries (.so files) &amp; Visibility</h2>
+</div>
+
+<div class="card">
+  <h3>📚 Two Kinds of Libraries</h3>
+  <div class="grid2">
+    <div style="background:#e8f5e9; border-radius:10px; padding:16px; border:1px solid #a5d6a7;">
+      <div style="font-weight:700; color:#2e7d32; margin-bottom:8px;">📦 Static Library (.a)</div>
+      <p style="font-size:14px; color:#333;">The library code is <strong>copied into</strong> your executable at link time. One big self-contained file.</p>
+      <p style="font-size:13px; color:#666; margin-top:6px;">Like buying ingredients and baking them into your cake.</p>
+    </div>
+    <div style="background:#e3f2fd; border-radius:10px; padding:16px; border:1px solid #81d4fa;">
+      <div style="font-weight:700; color:#01579b; margin-bottom:8px;">🔗 Dynamic Library (.so / .dll)</div>
+      <p style="font-size:14px; color:#333;">The library stays <strong>separate</strong>. Your program loads it at runtime. Many programs can share one copy.</p>
+      <p style="font-size:13px; color:#666; margin-top:6px;">Like ordering from a restaurant that many people use.</p>
+    </div>
+  </div>
+</div>
+
+<div class="callout yellow">
+  <div class="callout-title">⚡ Important: C/C++ Standards Don't Know About Dynamic Libraries!</div>
+  The entire C++23 standard (2,124 pages!) says <strong>nothing</strong> about .so or .dll files. Dynamic linking is a feature of the operating system, not the language. What follows is Linux-specific.
+</div>
+
+<div class="card">
+  <h3>👁️ Binding vs Visibility — Two Different Things</h3>
+  <p>When shipping a shared library, you have <strong>two layers of control</strong>:</p>
+  <table>
+    <tr><th>Concept</th><th>Controls…</th><th>Matters when…</th></tr>
+    <tr>
+      <td><strong>Binding</strong><br>(Global/Local)</td>
+      <td>Can other .o files inside your library see this symbol?</td>
+      <td>Building the library (static linking of .o files)</td>
+    </tr>
+    <tr>
+      <td><strong>Visibility</strong><br>(Default/Hidden)</td>
+      <td>Can users who link against your .so see this symbol?</td>
+      <td>When the user links their program to your .so</td>
+    </tr>
+  </table>
+
+  <div class="callout blue">
+    <div class="callout-title">💡 The key insight</div>
+    Inside a shared library, you need <strong>GLOBAL binding</strong> so all your internal .o files can call each other. But you also want <strong>HIDDEN visibility</strong> so external users can't access your private internals. These two goals don't conflict!
+  </div>
+</div>
+
+<!-- DIAGRAM: Visibility inside vs outside -->
+<div class="diagram-wrap">
+<svg width="680" height="280" viewBox="0 0 680 280">
+  <!-- .so boundary -->
+  <rect x="20" y="20" width="640" height="240" rx="14" fill="#f5f5f5" stroke="#9e9e9e" stroke-width="2" stroke-dasharray="8,4"/>
+  <text x="340" y="45" text-anchor="middle" fill="#555" font-size="13" font-weight="bold">libmylib.so</text>
+
+  <!-- Internal functions -->
+  <rect x="55" y="65" width="220" height="80" rx="10" fill="#ffebee" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="165" y="88" text-anchor="middle" fill="#c62828" font-size="12" font-weight="bold">🔒 internal_function()</text>
+  <text x="165" y="106" text-anchor="middle" fill="#555" font-size="11">visibility = HIDDEN</text>
+  <text x="165" y="122" text-anchor="middle" fill="#555" font-size="11">binding = GLOBAL (inside .so only)</text>
+
+  <!-- API functions -->
+  <rect x="55" y="165" width="220" height="65" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/>
+  <text x="165" y="188" text-anchor="middle" fill="#2e7d32" font-size="12" font-weight="bold">✅ api_function()</text>
+  <text x="165" y="205" text-anchor="middle" fill="#555" font-size="11">visibility = DEFAULT</text>
+  <text x="165" y="220" text-anchor="middle" fill="#555" font-size="11">binding = GLOBAL</text>
+
+  <!-- Internal arrow (can call each other) -->
+  <path d="M 275,105 Q 340,100 340,180 Q 340,200 275,200" fill="none" stroke="#388e3c" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="350" y="155" fill="#388e3c" font-size="11" font-weight="bold">✓ can call</text>
+  <text x="350" y="169" fill="#388e3c" font-size="11">each other</text>
+  <text x="350" y="183" fill="#555" font-size="10">(same .so)</text>
+
+  <!-- External user -->
+  <rect x="490" y="90" width="150" height="100" rx="10" fill="#e3f2fd" stroke="#0277bd" stroke-width="1.5"/>
+  <text x="565" y="114" text-anchor="middle" fill="#01579b" font-size="12" font-weight="bold">External User</text>
+  <text x="565" y="132" text-anchor="middle" fill="#555" font-size="11">user_app</text>
+
+  <!-- Access attempts -->
+  <line x1="490" y1="110" x2="278" y2="110" stroke="#d32f2f" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="400" y="105" fill="#d32f2f" font-size="12" font-weight="bold">🚫 BLOCKED</text>
+  <text x="400" y="120" fill="#d32f2f" font-size="10">hidden symbol not in</text>
+  <text x="400" y="133" fill="#d32f2f" font-size="10">dynamic symbol table</text>
+
+  <line x1="490" y1="175" x2="278" y2="196" stroke="#388e3c" stroke-width="1.5" marker-end="url(#c2)"/>
+  <text x="395" y="175" fill="#388e3c" font-size="11" font-weight="bold">✅ ALLOWED</text>
+
+</svg>
+<div class="diagram-title">Fig 6: Inside a .so — all functions can see each other, but only DEFAULT visibility is exposed externally</div>
+</div>
+
+<div class="card">
+  <h3>🛡️ Best Practice: The Visibility Pattern</h3>
+<pre><span class="cmt"># Step 1: compile everything hidden by default</span>
+gcc -fvisibility=hidden -c library.c
+
+<span class="cmt">// Step 2: define a portable macro for your public API</span>
+<span class="hl">#define MYLIB_API __attribute__((visibility("default")))</span>
+
+<span class="cmt">// Step 3: mark only your public functions with it</span>
+<span class="nm-g">MYLIB_API</span> <span class="kw">int</span> <span class="fn">api_function</span>();     <span class="cmt">← users can link to this</span>
+<span class="kw">int</span> <span class="fn">internal_function</span>();          <span class="cmt">← hidden from users</span></pre>
+  <p><strong>Why hide first, then reveal?</strong> Say you have 2000 internal functions and 23 public ones. It's <em>much easier</em> to explicitly mark 23 things as public than to remember to hide 1977 things!</p>
+</div>
+
+<div class="card">
+  <h3>🪟 Windows Version of the Same Idea</h3>
+<pre><span class="cmt">// Windows uses __declspec instead of __attribute__</span>
+<span class="hl">#ifdef _WIN32
+  #ifdef BUILDING_DLL
+    #define MYLIB_API __declspec(dllexport)  <span class="cmt">← when building the DLL</span>
+  #else
+    #define MYLIB_API __declspec(dllimport)  <span class="cmt">← when using the DLL</span>
+  #endif
+#else
+  #define MYLIB_API __attribute__((visibility("default")))  <span class="cmt">← Linux</span>
+#endif</span></pre>
+  <p>This lets you ship one header that works for both building and using the library, on both Windows and Linux.</p>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 11 ══════════════════════════════ -->
+<div class="sec-header" id="s11">
+  <div class="num">11</div>
+  <span class="emoji">📊</span>
+  <h2>Your Three Symbol Tables</h2>
+</div>
+
+<div class="card">
+  <h3>❓ "Wait, why do I have THREE symbol tables?"</h3>
+  <p>A final binary (especially a shared library) can contain up to three different symbol tables, each serving a different purpose:</p>
+</div>
+
+<!-- DIAGRAM: Three symbol tables -->
+<div class="diagram-wrap">
+<svg width="680" height="240" viewBox="0 0 680 240">
+
+  <!-- Table 1: symtab -->
+  <rect x="10" y="20" width="200" height="200" rx="10" fill="#e8eaf6" stroke="#5c6bc0" stroke-width="1.5"/>
+  <text x="110" y="46" text-anchor="middle" fill="#3949ab" font-size="13" font-weight="bold">.symtab</text>
+  <text x="110" y="62" text-anchor="middle" fill="#555" font-size="10">Static Symbol Table</text>
+  <text x="20" y="85" fill="#333" font-size="11">• ALL symbols</text>
+  <text x="20" y="103" fill="#333" font-size="11">• Used for static linking</text>
+  <text x="20" y="121" fill="#333" font-size="11">• Used while building</text>
+  <text x="20" y="145" fill="#333" font-size="12">Can strip? ✅</text>
+  <text x="20" y="162" fill="#555" font-size="10">Once linking is done,</text>
+  <text x="20" y="177" fill="#555" font-size="10">no longer needed at</text>
+  <text x="20" y="192" fill="#555" font-size="10">runtime</text>
+  <rect x="35" y="130" width="140" height="24" rx="6" fill="#c8e6c9"/>
+  <text x="105" y="147" text-anchor="middle" fill="#2e7d32" font-size="11" font-weight="bold">strip mylib.so</text>
+
+  <!-- Table 2: dynsym -->
+  <rect x="240" y="20" width="200" height="200" rx="10" fill="#e3f2fd" stroke="#0277bd" stroke-width="1.5"/>
+  <text x="340" y="46" text-anchor="middle" fill="#01579b" font-size="13" font-weight="bold">.dynsym</text>
+  <text x="340" y="62" text-anchor="middle" fill="#555" font-size="10">Dynamic Symbol Table</text>
+  <text x="250" y="85" fill="#333" font-size="11">• PUBLIC API only</text>
+  <text x="250" y="103" fill="#333" font-size="11">• Only default-visibility</text>
+  <text x="250" y="121" fill="#333" font-size="11">• Used at program startup</text>
+  <text x="340" y="145" text-anchor="middle" fill="#333" font-size="12">Can strip? ❌</text>
+  <text x="250" y="162" fill="#555" font-size="10">Dynamic linker (ld.so)</text>
+  <text x="250" y="177" fill="#555" font-size="10">reads this every time</text>
+  <text x="250" y="192" fill="#555" font-size="10">your program starts</text>
+
+  <!-- Table 3: debug -->
+  <rect x="470" y="20" width="200" height="200" rx="10" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="570" y="46" text-anchor="middle" fill="#e65100" font-size="13" font-weight="bold">.debug_*</text>
+  <text x="570" y="62" text-anchor="middle" fill="#555" font-size="10">Debug Info (DWARF)</text>
+  <text x="480" y="85" fill="#333" font-size="11">• File names</text>
+  <text x="480" y="103" fill="#333" font-size="11">• Line numbers</text>
+  <text x="480" y="121" fill="#333" font-size="11">• Type info for GDB</text>
+  <text x="570" y="145" text-anchor="middle" fill="#333" font-size="12">Can strip? ✅</text>
+  <text x="480" y="162" fill="#555" font-size="10">Very large! Not needed</text>
+  <text x="480" y="177" fill="#555" font-size="10">in production builds.</text>
+  <rect x="495" y="183" width="150" height="24" rx="6" fill="#c8e6c9"/>
+  <text x="570" y="200" text-anchor="middle" fill="#2e7d32" font-size="10" font-weight="bold">strip --strip-debug</text>
+</svg>
+<div class="diagram-title">Fig 7: The three symbol tables in a binary and what you can safely remove</div>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 12 ══════════════════════════════ -->
+<div class="sec-header" id="s12">
+  <div class="num">12</div>
+  <span class="emoji">🎯</span>
+  <h2>Who Gets a Symbol? Quick Rules</h2>
+</div>
+
+<div class="card">
+  <h3>🗂️ The Core Rule</h3>
+  <p>Something gets a symbol if <strong>it's a single, findable thing that other code needs to locate</strong>. Things that are temporary or relative (like variables on the stack) don't need symbols.</p>
+</div>
+
+<!-- DIAGRAM: Decision flowchart simplified -->
+<div class="diagram-wrap">
+<svg width="680" height="380" viewBox="0 0 680 380">
+  <defs>
+    <marker id="d1" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#555"/>
+    </marker>
+    <marker id="d2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#388e3c"/>
+    </marker>
+    <marker id="d3" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L0,7 L9,3.5 z" fill="#d32f2f"/>
+    </marker>
+  </defs>
+
+  <!-- Start -->
+  <rect x="240" y="10" width="200" height="42" rx="21" fill="#5c6bc0"/>
+  <text x="340" y="36" text-anchor="middle" fill="white" font-size="13" font-weight="bold">Something in your code</text>
+
+  <!-- Q1 -->
+  <rect x="190" y="75" width="300" height="50" rx="10" fill="#e3f2fd" stroke="#0277bd" stroke-width="1.5"/>
+  <text x="340" y="97" text-anchor="middle" fill="#01579b" font-size="13">Is there only ONE of this thing</text>
+  <text x="340" y="113" text-anchor="middle" fill="#01579b" font-size="13">in the entire program?</text>
+  <line x1="340" y1="52" x2="340" y2="73" stroke="#555" stroke-width="1.3" marker-end="url(#d1)"/>
+
+  <!-- No branch Q1 -->
+  <line x1="190" y1="100" x2="100" y2="100" stroke="#d32f2f" stroke-width="1.3" marker-end="url(#d3)"/>
+  <text x="143" y="94" text-anchor="middle" fill="#d32f2f" font-size="11" font-weight="bold">NO</text>
+  <rect x="10" y="75" width="85" height="65" rx="8" fill="#ffebee" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="53" y="100" text-anchor="middle" fill="#c62828" font-size="12" font-weight="bold">❌ No</text>
+  <text x="53" y="116" text-anchor="middle" fill="#c62828" font-size="11">Symbol</text>
+  <text x="53" y="130" text-anchor="middle" fill="#888" font-size="10">e.g. local var</text>
+
+  <!-- Yes Q1 → Q2 -->
+  <line x1="340" y1="125" x2="340" y2="150" stroke="#388e3c" stroke-width="1.3" marker-end="url(#d2)"/>
+  <text x="350" y="141" fill="#388e3c" font-size="11" font-weight="bold">YES</text>
+
+  <!-- Q2 -->
+  <rect x="195" y="152" width="290" height="50" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/>
+  <text x="340" y="174" text-anchor="middle" fill="#1b5e20" font-size="13">Is it actually used?</text>
+  <text x="340" y="191" text-anchor="middle" fill="#1b5e20" font-size="13">(not inlined or optimized away?)</text>
+
+  <!-- No branch Q2 -->
+  <line x1="195" y1="177" x2="100" y2="177" stroke="#d32f2f" stroke-width="1.3" marker-end="url(#d3)"/>
+  <text x="143" y="170" text-anchor="middle" fill="#d32f2f" font-size="11" font-weight="bold">Unused/</text>
+  <text x="143" y="182" text-anchor="middle" fill="#d32f2f" font-size="11" font-weight="bold">Inlined</text>
+  <rect x="10" y="152" width="85" height="65" rx="8" fill="#ffebee" stroke="#ef5350" stroke-width="1.5"/>
+  <text x="53" y="177" text-anchor="middle" fill="#c62828" font-size="12" font-weight="bold">❌ No</text>
+  <text x="53" y="193" text-anchor="middle" fill="#c62828" font-size="11">Symbol</text>
+  <text x="53" y="207" text-anchor="middle" fill="#888" font-size="10">Omitted</text>
+
+  <!-- Yes Q2 → Q3 -->
+  <line x1="340" y1="202" x2="340" y2="228" stroke="#388e3c" stroke-width="1.3" marker-end="url(#d2)"/>
+  <text x="350" y="218" fill="#388e3c" font-size="11" font-weight="bold">YES</text>
+
+  <!-- Q3 -->
+  <rect x="170" y="230" width="340" height="40" rx="10" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="340" y="255" text-anchor="middle" fill="#e65100" font-size="13">What kind of thing is it?</text>
+
+  <!-- Branches from Q3 -->
+  <!-- Global fn/var -->
+  <line x1="250" y1="270" x2="125" y2="305" stroke="#5c6bc0" stroke-width="1.2" marker-end="url(#d1)"/>
+  <rect x="15" y="308" width="215" height="60" rx="8" fill="#ede7f6" stroke="#7e57c2" stroke-width="1.5"/>
+  <text x="123" y="330" text-anchor="middle" fill="#4527a0" font-size="12" font-weight="bold">✅ GLOBAL Symbol</text>
+  <text x="123" y="347" text-anchor="middle" fill="#555" font-size="11">Global fn / global var</text>
+  <text x="123" y="362" text-anchor="middle" fill="#888" font-size="10">NM: T or D (uppercase)</text>
+
+  <!-- Static fn/var -->
+  <line x1="340" y1="270" x2="340" y2="305" stroke="#5c6bc0" stroke-width="1.2" marker-end="url(#d1)"/>
+  <rect x="233" y="308" width="215" height="60" rx="8" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/>
+  <text x="340" y="330" text-anchor="middle" fill="#1b5e20" font-size="12" font-weight="bold">✅ LOCAL Symbol</text>
+  <text x="340" y="347" text-anchor="middle" fill="#555" font-size="11">static fn / static var</text>
+  <text x="340" y="362" text-anchor="middle" fill="#888" font-size="10">NM: t or d (lowercase)</text>
+
+  <!-- Template/member fn -->
+  <line x1="430" y1="270" x2="555" y2="305" stroke="#5c6bc0" stroke-width="1.2" marker-end="url(#d1)"/>
+  <rect x="450" y="308" width="220" height="60" rx="8" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="560" y="330" text-anchor="middle" fill="#e65100" font-size="12" font-weight="bold">✅ WEAK/UNIQUE Symbol</text>
+  <text x="560" y="347" text-anchor="middle" fill="#555" font-size="11">template / member fn / inline var</text>
+  <text x="560" y="362" text-anchor="middle" fill="#888" font-size="10">NM: W or u</text>
+
+  <text x="237" y="290" fill="#5c6bc0" font-size="10">global</text>
+  <text x="330" y="290" fill="#5c6bc0" font-size="10">static</text>
+  <text x="435" y="290" fill="#5c6bc0" font-size="10">template/member</text>
+</svg>
+<div class="diagram-title">Fig 8: Simple flowchart — does your entity get a symbol?</div>
+</div>
+
+<div class="card">
+  <h3>📋 Quick Lookup Table</h3>
+  <table>
+    <tr><th>Entity</th><th>Gets Symbol?</th><th>Why?</th></tr>
+    <tr><td>Global variable (<code>int x = 5;</code>)</td><td>✅ Yes — GLOBAL</td><td>One copy, needs to be found</td></tr>
+    <tr><td>Global function (<code>int foo(){}</code>)</td><td>✅ Yes — GLOBAL</td><td>One copy, needs to be found</td></tr>
+    <tr><td>Local variable inside a function</td><td>❌ No</td><td>Lives on the stack, temporary</td></tr>
+    <tr><td>Function parameter</td><td>❌ No</td><td>Lives on the stack/register</td></tr>
+    <tr><td><code>static</code> local variable</td><td>✅ Yes — LOCAL</td><td>Persists between calls (one location)</td></tr>
+    <tr><td><code>static</code> global function</td><td>✅ If used — LOCAL</td><td>Private to this file</td></tr>
+    <tr><td>Class or struct type</td><td>❌ No</td><td>Types don't exist at runtime</td></tr>
+    <tr><td>Class data member (non-static)</td><td>❌ No</td><td>Just an offset inside the object</td></tr>
+    <tr><td>Member function (defined in .h)</td><td>✅ If used — WEAK</td><td>Can appear in many .o files</td></tr>
+    <tr><td>Function template instantiation</td><td>✅ If used — WEAK</td><td>Can appear in many .o files</td></tr>
+    <tr><td><code>inline</code> variable (C++17)</td><td>✅ Yes — UNIQUE</td><td>Multiple copies, can't be overridden</td></tr>
+  </table>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 13 ══════════════════════════════ -->
+<div class="sec-header" id="s13">
+  <div class="num">13</div>
+  <span class="emoji">🛠️</span>
+  <h2>Tools to Inspect Your Binaries</h2>
+</div>
+
+<div class="grid2">
+<div class="card">
+  <h3>🔍 nm — List Symbols</h3>
+  <p>The quickest way to see what symbols are in a file.</p>
+<pre><span class="cmt"># See all symbols</span>
+nm file.o
+
+<span class="cmt"># C++ friendly names (demangle)</span>
+nm -C file.o
+
+<span class="cmt"># See dynamic symbols (.so)</span>
+nm -D libfoo.so</pre>
+  <p>Letter guide: <code>T</code>=global code, <code>t</code>=local code, <code>D</code>=global data, <code>d</code>=local data, <code>U</code>=undefined, <code>W</code>=weak, <code>u</code>=unique</p>
+</div>
+
+<div class="card">
+  <h3>🔍 objdump — Disassemble</h3>
+  <p>See the actual machine code and more.</p>
+<pre><span class="cmt"># List all sections</span>
+objdump -s file.o
+
+<span class="cmt"># Disassemble code (see assembly)</span>
+objdump -d file.o
+
+<span class="cmt"># Show relocations too</span>
+objdump -dr file.o</pre>
+</div>
+
+<div class="card">
+  <h3>🔍 readelf — Deep Inspection</h3>
+  <p>More detailed than nm — shows visibility info too!</p>
+<pre><span class="cmt"># List all sections</span>
+readelf -S -W file.o
+
+<span class="cmt"># Show symbols WITH visibility</span>
+readelf -s file.o
+<span class="cmt"># nm does NOT show visibility!</span></pre>
+</div>
+
+<div class="card">
+  <h3>✂️ strip — Remove Symbol Tables</h3>
+  <p>Shrink your binary by removing symbol info you don't need in production.</p>
+<pre><span class="cmt"># Remove static symbol table</span>
+strip myapp
+
+<span class="cmt"># Remove debug info only</span>
+strip --strip-debug myapp
+
+<span class="cmt"># Verify: nm shows nothing</span>
+nm myapp   <span class="cmt">← "no symbols"</span>
+nm -D myapp <span class="cmt">← still shows API</span></pre>
+</div>
+</div>
+
+
+<!-- ══════════════════════════════ SECTION 14 ══════════════════════════════ -->
+<div class="sec-header" id="s14">
+  <div class="num">14</div>
+  <span class="emoji">🎓</span>
+  <h2>Final Summary</h2>
+</div>
+
+<!-- Big concept map -->
+<div class="diagram-wrap">
+<svg width="680" height="380" viewBox="0 0 680 380">
+
+  <!-- Central concept -->
+  <circle cx="340" cy="175" r="68" fill="#5c6bc0" stroke="white" stroke-width="3"/>
+  <text x="340" y="168" text-anchor="middle" fill="white" font-size="15" font-weight="bold">ELF</text>
+  <text x="340" y="185" text-anchor="middle" fill="white" font-size="15" font-weight="bold">Symbols</text>
+  <text x="340" y="202" text-anchor="middle" fill="#c5cae9" font-size="11">Named locations</text>
+
+  <!-- Top: Compilation -->
+  <rect x="200" y="10" width="280" height="60" rx="10" fill="#e8f5e9" stroke="#388e3c" stroke-width="1.5"/>
+  <text x="340" y="35" text-anchor="middle" fill="#1b5e20" font-size="13" font-weight="bold">🔄 Separate Compilation</text>
+  <text x="340" y="55" text-anchor="middle" fill="#555" font-size="11">Each .c/.cpp file → own .o (isolated)</text>
+  <line x1="340" y1="70" x2="340" y2="107" stroke="#388e3c" stroke-width="1.5"/>
+
+  <!-- Left: Relocations -->
+  <rect x="10" y="110" width="195" height="75" rx="10" fill="#fff9c4" stroke="#f9a825" stroke-width="1.5"/>
+  <text x="107" y="133" text-anchor="middle" fill="#e65100" font-size="12" font-weight="bold">📌 Relocations</text>
+  <text x="107" y="151" text-anchor="middle" fill="#555" font-size="11">Zeros + fix-it notes for</text>
+  <text x="107" y="167" text-anchor="middle" fill="#555" font-size="11">linker to patch addresses</text>
+  <line x1="205" y1="148" x2="272" y2="165" stroke="#f9a825" stroke-width="1.5"/>
+
+  <!-- Right: Linker -->
+  <rect x="472" y="120" width="195" height="75" rx="10" fill="#ede7f6" stroke="#7e57c2" stroke-width="1.5"/>
+  <text x="570" y="143" text-anchor="middle" fill="#4527a0" font-size="12" font-weight="bold">🔗 Linker</text>
+  <text x="570" y="161" text-anchor="middle" fill="#555" font-size="11">Merges sections, patches</text>
+  <text x="570" y="177" text-anchor="middle" fill="#555" font-size="11">relocations, picks weak</text>
+  <line x1="472" y1="158" x2="408" y2="165" stroke="#7e57c2" stroke-width="1.5"/>
+
+  <!-- Bottom-left: Binding -->
+  <rect x="10" y="258" width="210" height="100" rx="10" fill="#e3f2fd" stroke="#0277bd" stroke-width="1.5"/>
+  <text x="115" y="280" text-anchor="middle" fill="#01579b" font-size="12" font-weight="bold">🏷️ Binding</text>
+  <text x="115" y="298" text-anchor="middle" fill="#555" font-size="11">GLOBAL / LOCAL / WEAK / UNIQUE</text>
+  <text x="115" y="316" text-anchor="middle" fill="#555" font-size="11">Controls TU-to-TU visibility</text>
+  <text x="115" y="334" text-anchor="middle" fill="#555" font-size="10">(within a binary build)</text>
+  <text x="115" y="350" text-anchor="middle" fill="#888" font-size="10">↔ C++ linkage</text>
+  <line x1="195" y1="258" x2="285" y2="230" stroke="#0277bd" stroke-width="1.5"/>
+
+  <!-- Bottom-right: Visibility -->
+  <rect x="462" y="258" width="210" height="100" rx="10" fill="#fce4ec" stroke="#c2185b" stroke-width="1.5"/>
+  <text x="567" y="280" text-anchor="middle" fill="#880e4f" font-size="12" font-weight="bold">👁️ Visibility</text>
+  <text x="567" y="298" text-anchor="middle" fill="#555" font-size="11">DEFAULT / HIDDEN</text>
+  <text x="567" y="316" text-anchor="middle" fill="#555" font-size="11">Controls .so API exposure</text>
+  <text x="567" y="334" text-anchor="middle" fill="#555" font-size="10">(for dynamic libraries)</text>
+  <text x="567" y="350" text-anchor="middle" fill="#888" font-size="10">-fvisibility=hidden + macro</text>
+  <line x1="487" y1="258" x2="397" y2="230" stroke="#c2185b" stroke-width="1.5"/>
+
+  <!-- Bottom center: 3 tables -->
+  <rect x="240" y="265" width="200" height="90" rx="10" fill="#f5f5f5" stroke="#9e9e9e" stroke-width="1.5"/>
+  <text x="340" y="285" text-anchor="middle" fill="#333" font-size="12" font-weight="bold">📊 3 Symbol Tables</text>
+  <text x="340" y="303" text-anchor="middle" fill="#5c6bc0" font-size="11">.symtab — static (strippable)</text>
+  <text x="340" y="320" text-anchor="middle" fill="#0277bd" font-size="11">.dynsym — dynamic (keep!)</text>
+  <text x="340" y="337" text-anchor="middle" fill="#f57c00" font-size="11">.debug_* — debug (strippable)</text>
+  <line x1="340" y1="243" x2="340" y2="263" stroke="#9e9e9e" stroke-width="1.5"/>
+</svg>
+<div class="diagram-title">Fig 9: All concepts — how they connect together</div>
+</div>
+
+<div class="summary">
+  <h3>✅ The 10 Things to Remember</h3>
+  <ol style="padding-left:22px;">
+    <li>A <strong>symbol</strong> is a name → location entry in a table (like a phonebook for your binary).</li>
+    <li>Each <code>.c</code>/<code>.cpp</code> file is compiled <strong>in isolation</strong> into a <code>.o</code> (object file).</li>
+    <li>When a file can't find another function at compile time, it leaves <strong>zeros + a relocation note</strong>. The linker fills it in.</li>
+    <li>If the linker can't find a symbol → <code>undefined reference</code> error. Now you know why!</li>
+    <li><strong>GLOBAL</strong> binding = visible to all files. <strong>LOCAL</strong> = private to one file (<code>static</code>).</li>
+    <li><strong>WEAK</strong> = many copies allowed, linker picks one. Used for templates &amp; member functions.</li>
+    <li>All WEAK copies of a symbol <strong>must be identical</strong> — ODR violation = undefined behavior with no warning.</li>
+    <li>For shared libraries: <strong>Binding</strong> = who inside the .so can see it. <strong>Visibility</strong> = who outside can link to it.</li>
+    <li>Best practice: compile with <code>-fvisibility=hidden</code>, then explicitly export your public API.</li>
+    <li>Only <strong>singular, findable things</strong> get symbols. Stack variables, params, and class types don't.</li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════ INTERVIEW QUESTIONS ══════════════════════════════ -->
+
+<div class="sec-header" id="s15">
+  <div class="num" style="background:#c62828;">?</div>
+  <span class="emoji">🎤</span>
+  <h2>Interview Questions &amp; Model Answers</h2>
+</div>
+
+<div class="callout blue">
+  <div class="callout-title">📌 How to use this section</div>
+  Questions are grouped by difficulty: <strong>Beginner → Intermediate → Advanced</strong>. Each has a <em>model answer</em> you can expand. Try answering in your own words first, then check!
+</div>
+
+<!-- ── DIFFICULTY LEGEND ── -->
+<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px;">
+  <span style="background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; padding:5px 14px; border-radius:20px; font-size:13px; font-weight:700;">🟢 Beginner</span>
+  <span style="background:#fff8e1; color:#f57c00; border:1px solid #ffcc80; padding:5px 14px; border-radius:20px; font-size:13px; font-weight:700;">🟡 Intermediate</span>
+  <span style="background:#fce4ec; color:#c62828; border:1px solid #ef9a9a; padding:5px 14px; border-radius:20px; font-size:13px; font-weight:700;">🔴 Advanced</span>
+</div>
+
+<!-- ════════════ BEGINNER QUESTIONS ════════════ -->
+<div style="background:#e8f5e9; border-left:5px solid #388e3c; border-radius:10px; padding:14px 20px; margin:24px 0 12px;">
+  <span style="font-weight:800; color:#2e7d32; font-size:15px;">🟢 BEGINNER LEVEL</span>
+  <span style="color:#555; font-size:13px; margin-left:10px;">Expect these in entry-level / fresher interviews</span>
+</div>
+
+<!-- Q1 -->
+<div class="card" style="border-left:4px solid #388e3c;">
+  <h3 style="color:#2e7d32;">Q1 🟢 — What is a symbol in the context of C/C++ compilation?</h3>
+  <p style="color:#888; font-size:13px; margin-bottom:10px;"><em>Also asked as: "What does a linker use to connect object files?"</em></p>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#f1f8e9; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>A <strong>symbol</strong> is a named entry in a symbol table that maps a name (like a function or variable name) to a location inside the binary — specifically, a section name and an offset within that section.</p>
+      <p style="margin-top:8px;">When you write <code>int value = 42;</code>, the compiler creates a symbol called <code>value</code> pointing to the <code>.data</code> section. When you write <code>int get_value() {...}</code>, it creates a symbol called <code>get_value</code> pointing to the <code>.text</code> (code) section.</p>
+      <p style="margin-top:8px;">Symbols are what allow separately compiled files to find and call each other's functions and variables — the linker uses the symbol table as a directory to resolve all cross-file references.</p>
+      <div class="callout green" style="margin-top:10px;">
+        <div class="callout-title">🌟 Bonus point to mention</div>
+        Symbol names and machine code live in <em>separate sections</em> of the object file — so you can strip symbols without breaking the code itself.
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- Q2 -->
+<div class="card" style="border-left:4px solid #388e3c;">
+  <h3 style="color:#2e7d32;">Q2 🟢 — What is the difference between a declaration and a definition in C/C++?</h3>
+  <p style="color:#888; font-size:13px; margin-bottom:10px;"><em>Also asked as: "Why should you not put definitions in header files?"</em></p>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#f1f8e9; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>A <strong>declaration</strong> tells the compiler that something exists somewhere — it doesn't create any storage or machine code. A <strong>definition</strong> actually creates the thing — storage for a variable, or machine code for a function — and produces a symbol in the object file.</p>
+<pre style="margin:10px 0;"><span class="cmt">// Declaration — no symbol created</span>
+<span class="kw">extern</span> <span class="kw">int</span> value;
+<span class="kw">int</span> <span class="fn">get_value</span>();
+
+<span class="cmt">// Definition — symbol IS created</span>
+<span class="kw">int</span> value = <span class="num">42</span>;
+<span class="kw">int</span> <span class="fn">get_value</span>() { <span class="kw">return</span> value; }</pre>
+      <p>If you put a <em>definition</em> in a header file and that header is included by multiple <code>.cpp</code> files, each translation unit gets its own copy of the symbol, and the linker will raise a <strong>"multiple definition"</strong> error. Declarations are safe to put in headers because they don't create symbols.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q3 -->
+<div class="card" style="border-left:4px solid #388e3c;">
+  <h3 style="color:#2e7d32;">Q3 🟢 — What causes an "undefined reference" linker error? How do you fix it?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#f1f8e9; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>An <strong>"undefined reference"</strong> error means the linker found a <em>relocation entry</em> (a reference to a symbol) in one object file but could not find the matching <em>definition</em> (the actual symbol) in any of the object files or libraries being linked.</p>
+      <p style="margin-top:8px;"><strong>Common causes:</strong></p>
+      <ul style="padding-left:20px; margin-top:6px;">
+        <li>You declared a function but forgot to write the definition (or forgot to compile/link the file containing it)</li>
+        <li>You stripped the symbol table from an object file before linking</li>
+        <li>You forgot to link a required library (<code>-lm</code>, <code>-lpthread</code>, etc.)</li>
+        <li>Name mangling mismatch — a C++ function called from C without <code>extern "C"</code></li>
+      </ul>
+      <p style="margin-top:8px;"><strong>Fix:</strong> Ensure the <code>.cpp</code>/<code>.c</code> file containing the definition is compiled and passed to the linker, or link the correct library.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q4 -->
+<div class="card" style="border-left:4px solid #388e3c;">
+  <h3 style="color:#2e7d32;">Q4 🟢 — What does the <code>static</code> keyword mean at file scope? How does it affect linking?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#f1f8e9; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>At file scope, <code>static</code> gives a function or variable <strong>internal linkage</strong>. This means the symbol gets <strong>LOCAL binding</strong> in the ELF symbol table (shown as lowercase <code>t</code> or <code>d</code> in <code>nm</code>), making it invisible to the linker when resolving references from other files.</p>
+      <p style="margin-top:8px;"><strong>Key effects:</strong></p>
+      <ul style="padding-left:20px; margin-top:6px;">
+        <li>Other translation units cannot link to this function/variable</li>
+        <li>You can have the <em>same name</em> in multiple files with no conflict — each is a completely separate LOCAL symbol</li>
+        <li>The machine code is identical — only the symbol table entry changes</li>
+      </ul>
+<pre style="margin:10px 0;"><span class="cmt">// Both files can have "helper" — no linker conflict</span>
+<span class="kw">static</span> <span class="kw">int</span> <span class="fn">helper</span>() { <span class="kw">return</span> <span class="num">1</span>; }  <span class="cmt">// file1.c</span>
+<span class="kw">static</span> <span class="kw">int</span> <span class="fn">helper</span>() { <span class="kw">return</span> <span class="num">2</span>; }  <span class="cmt">// file2.c</span></pre>
+      <p>Note: <code>static</code> inside a class means something different (class-level member). Inside a function it means static storage duration. Context matters!</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q5 -->
+<div class="card" style="border-left:4px solid #388e3c;">
+  <h3 style="color:#2e7d32;">Q5 🟢 — What are the key sections inside an ELF object file?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#f1f8e9; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <table style="margin-top:4px;">
+        <tr><th>Section</th><th>Contents</th></tr>
+        <tr><td><code>.text</code></td><td>Machine code (CPU instructions) — the compiled functions</td></tr>
+        <tr><td><code>.data</code></td><td>Initialized global and static variables</td></tr>
+        <tr><td><code>.bss</code></td><td>Zero-initialized global variables (no space needed in file)</td></tr>
+        <tr><td><code>.symtab</code></td><td>Symbol table — names and locations of all symbols</td></tr>
+        <tr><td><code>.rela.text</code></td><td>Relocation entries — fix-it notes for the linker</td></tr>
+        <tr><td><code>.debug_*</code></td><td>DWARF debug information (file names, line numbers, types)</td></tr>
+      </table>
+      <p style="margin-top:10px;">Key insight: these sections are <em>completely separate</em>. The machine code in <code>.text</code> has no symbol names embedded — those live only in <code>.symtab</code>. This is why <code>strip</code> can remove symbols without breaking the code.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q6 -->
+<div class="card" style="border-left:4px solid #388e3c;">
+  <h3 style="color:#2e7d32;">Q6 🟢 — What is a relocation? Why does the compiler need it?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#f1f8e9; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>A <strong>relocation</strong> is a note stored in a separate section (<code>.rela.text</code>) that tells the linker: <em>"at this byte offset in the code, please fill in the address of this symbol."</em></p>
+      <p style="margin-top:8px;">The compiler needs it because each file is compiled in isolation. When <code>main.c</code> calls <code>get_value()</code> from another file, the compiler doesn't know the final address of that function. So it writes a placeholder (zeros) in the <code>call</code> instruction and leaves a relocation entry.</p>
+      <p style="margin-top:8px;">The linker later loops over all relocation tables, looks up each symbol, computes the correct address, and patches it into the binary. After linking, all relocations are resolved and no zeros remain.</p>
+    </div>
+  </details>
+</div>
+
+
+<!-- ════════════ INTERMEDIATE QUESTIONS ════════════ -->
+<div style="background:#fff8e1; border-left:5px solid #f57c00; border-radius:10px; padding:14px 20px; margin:36px 0 12px;">
+  <span style="font-weight:800; color:#e65100; font-size:15px;">🟡 INTERMEDIATE LEVEL</span>
+  <span style="color:#555; font-size:13px; margin-left:10px;">Expect these in 2–4 years experience interviews</span>
+</div>
+
+<!-- Q7 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q7 🟡 — What are the four ELF symbol binding types? How do they differ?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <table>
+        <tr><th>Binding</th><th>NM Letter</th><th>Rule</th><th>Use case</th></tr>
+        <tr><td><strong>GLOBAL</strong></td><td>T / D</td><td>Only ONE allowed across all files</td><td>Normal functions, global variables</td></tr>
+        <tr><td><strong>LOCAL</strong></td><td>t / d</td><td>Private to its translation unit. Many allowed.</td><td><code>static</code> functions/vars, anonymous namespaces</td></tr>
+        <tr><td><strong>WEAK</strong></td><td>W / w</td><td>Many copies allowed; linker keeps one. A GLOBAL overrides it.</td><td>Templates, member functions, <code>__attribute__((weak))</code></td></tr>
+        <tr><td><strong>UNIQUE</strong></td><td>u</td><td>Many copies allowed; linker keeps one. Cannot be overridden by GLOBAL.</td><td>C++17 <code>inline</code> variables</td></tr>
+      </table>
+      <p style="margin-top:10px;"><strong>Critical difference WEAK vs UNIQUE:</strong> A GLOBAL symbol can override a WEAK one (enabling the plugin/override pattern). A UNIQUE symbol cannot be overridden — it's used for <code>inline</code> variables to guarantee exactly one instance without allowing user overrides.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q8 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q8 🟡 — Why do C++ templates produce WEAK symbols? How does the linker handle them?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>Template definitions must live in header files so every translation unit can instantiate them. When multiple <code>.cpp</code> files include the same header and use the same template, each one compiles its own copy of the instantiation — producing potentially many identical definitions.</p>
+      <p style="margin-top:8px;">The compiler automatically marks template instantiations (and member functions defined in headers) as <strong>WEAK</strong> symbols. The linker rule for WEAK is: <em>keep exactly one, silently discard all duplicates</em>.</p>
+      <p style="margin-top:8px;"><strong>Clever trick:</strong> The linker normally merges entire sections — it can't remove individual functions from inside a section. To work around this, the compiler creates a <em>brand-new section</em> for each weak symbol (e.g., <code>.text.MyClass::get_value()</code>). The linker can then discard entire sections it doesn't need, keeping only one copy.</p>
+      <div class="callout yellow" style="margin-top:10px;">
+        <div class="callout-title">⚠️ Watch out</div>
+        All weak copies must be identical (ODR rule). The linker does NOT verify this. Silent undefined behavior if they differ!
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- Q9 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q9 🟡 — What is the One Definition Rule (ODR)? What happens if you violate it?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>The <strong>One Definition Rule</strong> states: in an entire program, there must be exactly one definition of every non-inline function, variable, class, template, etc. For things that are allowed to have multiple definitions (templates, inline functions, member functions defined in headers), <em>all copies must be identical</em>.</p>
+      <p style="margin-top:8px;"><strong>What happens if you violate it:</strong> The linker silently picks one version and discards the rest — <em>with no warning or error</em>. This leads to <strong>undefined behavior</strong>. Your program may produce wrong results, crash, or behave differently on different builds/platforms.</p>
+<pre style="margin:10px 0;"><span class="cmt">// ODR violation — DO NOT do this</span>
+<span class="hl">#ifdef FEATURE_X
+  template&lt;typename T&gt; T compute() { return <span class="num">2</span>; }
+#else
+  template&lt;typename T&gt; T compute() { return <span class="num">1</span>; }
+#endif</span>
+<span class="cmt">// Different TUs may see different bodies → UB!</span></pre>
+      <p><strong>Real-world danger:</strong> ODR violations are notoriously hard to debug because there's no compiler/linker error. Tools like <code>-fsanitize=address</code> or gold linker's <code>--detect-odr-violations</code> can sometimes catch them.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q10 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q10 🟡 — What is the difference between symbol binding and symbol visibility?</h3>
+  <p style="color:#888; font-size:13px; margin-bottom:10px;"><em>This is a very common interview trap — many people confuse the two!</em></p>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>These are two completely orthogonal (independent) concepts in ELF:</p>
+      <table style="margin-top:8px;">
+        <tr><th>Property</th><th>Binding</th><th>Visibility</th></tr>
+        <tr><td><strong>Question answered</strong></td><td>Can other .o files in the same link step see this symbol?</td><td>Can users who link against my .so see this symbol?</td></tr>
+        <tr><td><strong>Applies to</strong></td><td>Static linking (object files → binary)</td><td>Dynamic linking (users linking against a shared library)</td></tr>
+        <tr><td><strong>Values</strong></td><td>GLOBAL / LOCAL / WEAK / UNIQUE</td><td>DEFAULT / HIDDEN / PROTECTED / INTERNAL</td></tr>
+        <tr><td><strong>Set via</strong></td><td><code>static</code>, anonymous namespace, <code>__attribute__((weak))</code></td><td><code>-fvisibility=hidden</code>, <code>__attribute__((visibility("default")))</code></td></tr>
+        <tr><td><strong>Viewable with</strong></td><td><code>nm</code> (uppercase/lowercase letter)</td><td><code>readelf -s</code> (not shown by nm!)</td></tr>
+      </table>
+      <p style="margin-top:10px;"><strong>Key insight:</strong> A symbol can have GLOBAL binding (all .o files in the library can call it) AND HIDDEN visibility (external users can't link to it). This is the standard pattern for internal helper functions in shared libraries.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q11 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q11 🟡 — How would you limit the public API surface of a shared library (.so)?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>The recommended approach is:</p>
+      <ul class="steps" style="margin-top:8px;">
+        <li>Compile all objects with <code>-fvisibility=hidden</code> — this makes <em>every</em> symbol hidden by default</li>
+        <li>Define an export macro (e.g. <code>MYLIB_API</code>) that expands to <code>__attribute__((visibility("default")))</code> on Linux</li>
+        <li>Tag only your public API functions/classes with the macro</li>
+      </ul>
+<pre style="margin:10px 0;"><span class="cmt">// In CMake:</span>
+target_compile_options(mylib PRIVATE -fvisibility=hidden)
+
+<span class="cmt">// In your header:</span>
+<span class="hl">#define MYLIB_API __attribute__((visibility("default")))</span>
+MYLIB_API <span class="kw">int</span> <span class="fn">public_function</span>();   <span class="cmt">← exported</span>
+<span class="kw">int</span> <span class="fn">internal_helper</span>();             <span class="cmt">← hidden</span></pre>
+      <p><strong>Why "hide-by-default"?</strong></p>
+      <ul style="padding-left:20px; margin-top:6px;">
+        <li>Smaller <code>.dynsym</code> table → faster startup, smaller binary</li>
+        <li>Prevents users from accidentally depending on internal functions</li>
+        <li>Reduces symbol conflicts when multiple libraries define the same internal names</li>
+        <li>It's easier to remember to mark 20 public things than to hide 2000 private ones</li>
+      </ul>
+    </div>
+  </details>
+</div>
+
+<!-- Q12 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q12 🟡 — Why does a shared library have two symbol tables (.symtab and .dynsym)? Can you remove either?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>They serve different purposes at different stages:</p>
+      <table style="margin-top:8px;">
+        <tr><th>Table</th><th>Purpose</th><th>Used when</th><th>Can strip?</th></tr>
+        <tr><td><code>.symtab</code></td><td>All symbols — used during static linking to build the .so</td><td>Build time only</td><td>✅ Yes — <code>strip libfoo.so</code></td></tr>
+        <tr><td><code>.dynsym</code></td><td>Public API only (default-visibility) — used by the dynamic linker</td><td>Every program startup</td><td>❌ No — runtime requires it</td></tr>
+      </table>
+      <p style="margin-top:10px;">After the .so is built and shipped, you can safely strip <code>.symtab</code> — linking is already done, only dynamic symbol resolution happens at runtime. Stripping it shrinks the binary and hides internal implementation details (a security-through-obscurity benefit).</p>
+      <p style="margin-top:8px;"><code>.dynsym</code> is always needed because <code>ld.so</code> reads it every time the program starts to resolve cross-.so symbol references.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q13 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q13 🟡 — What is the difference between a static library (.a) and a shared library (.so)?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <table>
+        <tr><th>Property</th><th>Static Library (.a)</th><th>Shared Library (.so)</th></tr>
+        <tr><td>Linking time</td><td>Build time — code copied into executable</td><td>Runtime — loaded by dynamic linker (ld.so)</td></tr>
+        <tr><td>Binary size</td><td>Larger executable (code included)</td><td>Smaller executable (code stays in .so)</td></tr>
+        <tr><td>Memory</td><td>Each process has its own copy</td><td>One copy shared in memory by all processes</td></tr>
+        <tr><td>Updates</td><td>Must recompile executable to update library</td><td>Update just the .so file; all programs benefit</td></tr>
+        <tr><td>Distribution</td><td>Self-contained, easy to distribute</td><td>Requires .so to be present on target system</td></tr>
+        <tr><td>Symbol resolution</td><td>Done fully at link time</td><td>Partially deferred to runtime via .dynsym</td></tr>
+        <tr><td>Visibility controls</td><td>Not applicable</td><td>-fvisibility=hidden + export macros</td></tr>
+      </table>
+    </div>
+  </details>
+</div>
+
+<!-- Q14 -->
+<div class="card" style="border-left:4px solid #f57c00;">
+  <h3 style="color:#e65100;">Q14 🟡 — Which entities in C++ get a symbol, and which don't? Give examples.</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fffde7; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p><strong>Rule of thumb:</strong> Something gets a symbol if it is a <em>single, findable thing</em> that exists at exactly one address in the program and might need to be located by the linker.</p>
+      <table style="margin-top:8px;">
+        <tr><th>Entity</th><th>Symbol?</th><th>Reason</th></tr>
+        <tr><td>Global variable / function</td><td>✅ GLOBAL</td><td>One copy, must be findable</td></tr>
+        <tr><td><code>static</code> global var/fn</td><td>✅ LOCAL (if used)</td><td>One copy per TU, private</td></tr>
+        <tr><td>Local variable</td><td>❌</td><td>Lives on stack — relative to stack pointer</td></tr>
+        <tr><td>Function parameter</td><td>❌</td><td>Passed in register or on stack</td></tr>
+        <tr><td><code>static</code> local variable</td><td>✅ LOCAL</td><td>Static storage → one fixed address</td></tr>
+        <tr><td>Class / struct type itself</td><td>❌</td><td>Types don't exist at runtime</td></tr>
+        <tr><td>Non-static data member</td><td>❌</td><td>Just an offset within the object</td></tr>
+        <tr><td>Member function (in .h)</td><td>✅ WEAK (if used)</td><td>Multiple TUs, linker deduplicates</td></tr>
+        <tr><td>Function template instantiation</td><td>✅ WEAK (if used)</td><td>Multiple TUs, linker deduplicates</td></tr>
+        <tr><td><code>inline</code> variable (C++17)</td><td>✅ UNIQUE</td><td>Multiple TUs, non-overridable</td></tr>
+      </table>
+    </div>
+  </details>
+</div>
+
+
+<!-- ════════════ ADVANCED QUESTIONS ════════════ -->
+<div style="background:#fce4ec; border-left:5px solid #c62828; border-radius:10px; padding:14px 20px; margin:36px 0 12px;">
+  <span style="font-weight:800; color:#c62828; font-size:15px;">🔴 ADVANCED LEVEL</span>
+  <span style="color:#555; font-size:13px; margin-left:10px;">Expect these in senior / principal / systems programming interviews</span>
+</div>
+
+<!-- Q15 -->
+<div class="card" style="border-left:4px solid #c62828;">
+  <h3 style="color:#c62828;">Q15 🔴 — How does <code>__attribute__((weak))</code> enable a plugin/override pattern in C? Walk through the mechanics.</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fff5f5; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>When you mark a function with <code>__attribute__((weak))</code>, the compiler emits it with WEAK binding in the ELF symbol table. The linker rule for symbol resolution is:</p>
+      <ol style="padding-left:20px; margin-top:8px;">
+        <li>If there is <strong>exactly one GLOBAL</strong> symbol with this name → use it, discard all WEAK copies</li>
+        <li>If there are <strong>only WEAK</strong> symbols → pick one (usually the first encountered)</li>
+        <li>You <strong>cannot</strong> have two GLOBAL symbols with the same name — that's a linker error</li>
+      </ol>
+<pre style="margin:12px 0;"><span class="cmt">// library.c — shipped default</span>
+<span class="kw">void</span> <span class="fn">on_event</span>() <span class="hl">__attribute__((weak))</span>;
+<span class="kw">void</span> <span class="fn">on_event</span>() { <span class="cmt">/* default no-op */</span> }
+
+<span class="cmt">// user.c — user's override (no weak → GLOBAL)</span>
+<span class="kw">void</span> <span class="fn">on_event</span>() {
+    printf(<span class="str">"custom handler!\n"</span>);  <span class="cmt">← this wins</span>
+}</pre>
+      <p>This enables a simple plug-in system for static linking. The library ships a safe default; users can silently override it just by providing their own definition. It's used extensively in embedded C for <em>interrupt handlers</em> — the HAL provides weak defaults, and user code overrides only the ones it needs.</p>
+      <div class="callout yellow" style="margin-top:10px;">
+        <div class="callout-title">⚠️ Linux/GCC/Clang only</div>
+        This is not standard C/C++. It's an ELF-specific extension. Windows has no direct equivalent (you'd use function pointers or DLL import tables instead).
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- Q16 -->
+<div class="card" style="border-left:4px solid #c62828;">
+  <h3 style="color:#c62828;">Q16 🔴 — Why can't the linker simply remove individual weak-symbol functions from a merged <code>.text</code> section? How does it actually do it?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fff5f5; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>The linker works at <strong>section granularity</strong> — it copies or discards entire sections, not individual bytes within them. So if a function is in the middle of a <code>.text</code> section along with 50 other functions, the linker can't surgically remove just that one function.</p>
+      <p style="margin-top:8px;"><strong>The compiler's solution:</strong> For every weak/unique symbol (template instantiation, member function defined in a header, inline variable), the compiler creates a <em>dedicated section</em> containing only that one symbol:</p>
+<pre style="margin:10px 0;"><span class="cmt"># objdump -t main.o | grep text</span>
+.text.main                       <span class="cmt">← normal code section</span>
+.text._ZN7MyClass8get_valueEv    <span class="cmt">← section for ONE member fn</span>
+.text._Z9get_valueIiEv           <span class="cmt">← section for ONE template inst.</span></pre>
+      <p>Now the linker can discard the <em>entire section</em> when it encounters a duplicate. This is the mechanism that makes the C++ COMDAT (COMmon DATa) feature work — what GCC/Clang call "section groups."</p>
+      <p style="margin-top:8px;"><strong>Additional benefit:</strong> This same mechanism enables <strong>dead code elimination</strong> (<code>--gc-sections</code> flag). If a function is never called, its entire dedicated section can be garbage-collected by the linker, reducing binary size.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q17 -->
+<div class="card" style="border-left:4px solid #c62828;">
+  <h3 style="color:#c62828;">Q17 🔴 — What is UNIQUE symbol binding (ELF extension)? How does it differ from WEAK, and what C++ feature uses it?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fff5f5; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>UNIQUE is a newer ELF extension to the GNU ABI. Like WEAK, it allows a symbol to exist in multiple object files with the linker keeping only one copy. The critical difference:</p>
+      <table style="margin-top:8px;">
+        <tr><th>Property</th><th>WEAK</th><th>UNIQUE</th></tr>
+        <tr><td>Multiple copies allowed?</td><td>✅ Yes</td><td>✅ Yes</td></tr>
+        <tr><td>GLOBAL overrides it?</td><td>✅ Yes — GLOBAL wins</td><td>❌ No — UNIQUE cannot be overridden</td></tr>
+        <tr><td>NM letter</td><td>W / w</td><td>u (lowercase)</td></tr>
+        <tr><td>Used for</td><td>Templates, member fns, manual <code>__attribute__((weak))</code></td><td>C++17 <code>inline</code> variables</td></tr>
+      </table>
+      <p style="margin-top:10px;">C++17 introduced <code>inline</code> variables to solve the problem of defining variables in headers:</p>
+<pre style="margin:10px 0;"><span class="cmt">// Before C++17: had to put definition in a .cpp file</span>
+<span class="cmt">// C++17+: define directly in the header</span>
+<span class="kw">inline</span> <span class="kw">int</span> global_count = <span class="num">0</span>;  <span class="cmt">← UNIQUE symbol</span>
+
+<span class="kw">struct</span> Config {
+    <span class="kw">static</span> <span class="kw">inline</span> <span class="kw">int</span> max_size = <span class="num">100</span>;  <span class="cmt">← also UNIQUE</span>
+};</pre>
+      <p>The UNIQUE binding guarantees one copy across the entire program, while preventing anyone from accidentally or intentionally overriding it with a GLOBAL definition — which would be wrong for a language-level inline variable.</p>
+      <p style="margin-top:8px;"><strong>Confusing NM output note:</strong> <code>u</code> (lowercase) = UNIQUE, and <code>U</code> (uppercase) = UNDEFINED. These are completely unrelated and the naming is unfortunately confusing.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q18 -->
+<div class="card" style="border-left:4px solid #c62828;">
+  <h3 style="color:#c62828;">Q18 🔴 — You have a .so library. A user reports that calling an undocumented internal function (by casting a function pointer from dlsym) works. How would you prevent this?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fff5f5; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p>If <code>dlsym()</code> can find a symbol, it means that symbol is in the <strong>.dynsym (dynamic symbol table)</strong> with DEFAULT visibility. The fix is to ensure internal functions have HIDDEN visibility so they never appear in .dynsym.</p>
+      <p style="margin-top:8px;"><strong>Step-by-step fix:</strong></p>
+      <ul class="steps" style="margin-top:8px;">
+        <li>Add <code>-fvisibility=hidden</code> to your compile flags for all .o files going into the .so. Now every symbol defaults to HIDDEN — they won't appear in .dynsym.</li>
+        <li>Create an export macro and tag only your intentionally public functions:
+<pre style="margin:8px 0;"><span class="hl">#define MYLIB_API __attribute__((visibility("default")))</span>
+MYLIB_API <span class="kw">int</span> <span class="fn">documented_function</span>();  <span class="cmt">← in .dynsym</span>
+<span class="kw">int</span> <span class="fn">internal_function</span>();              <span class="cmt">← NOT in .dynsym</span></pre>
+        </li>
+        <li>Optionally run <code>strip</code> to remove <code>.symtab</code> as well, so even tools like <code>nm</code> can't list internal symbol names.</li>
+        <li>Verify with: <code>nm -D libmylib.so</code> — only your public API should appear.</li>
+      </ul>
+      <p style="margin-top:8px;">With HIDDEN visibility, <code>dlsym("internal_function")</code> returns <code>NULL</code> — the symbol simply doesn't exist in the dynamic symbol table. The code is still there and runs, but it's unreachable from the outside.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q19 -->
+<div class="card" style="border-left:4px solid #c62828;">
+  <h3 style="color:#c62828;">Q19 🔴 — Explain how the separate compilation model and relocations work together. Why does the compiler emit zeros in the call instruction?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fff5f5; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p><strong>The core problem:</strong> In the separate compilation model, each <code>.c</code>/<code>.cpp</code> file is compiled in complete isolation. When the compiler processes <code>main.c</code> and sees <code>call get_value()</code>, it has no idea:</p>
+      <ul style="padding-left:20px; margin-top:6px;">
+        <li>Which object file <code>get_value</code> is in</li>
+        <li>Where in the final executable the linker will place that object file's code</li>
+        <li>Therefore: what the final absolute or relative address of <code>get_value</code> will be</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>What the compiler does:</strong></p>
+      <ol style="padding-left:20px; margin-top:6px;">
+        <li>Emits the <code>call</code> opcode (<code>E8</code>) followed by <strong>4 zero bytes</strong> as a placeholder for the target address</li>
+        <li>Writes a <strong>relocation entry</strong> in <code>.rela.text</code>: "At byte offset <code>0xA</code> in this section, fill in the PC-relative address of symbol <code>get_value</code>, type <code>R_X86_64_PLT32</code>"</li>
+      </ol>
+      <p style="margin-top:8px;"><strong>What the linker does:</strong></p>
+      <ol style="padding-left:20px; margin-top:6px;">
+        <li>Decides where every section from every object file will be placed in the final binary</li>
+        <li>Loops over all relocation tables</li>
+        <li>For each relocation: looks up the symbol in the symbol table, computes the correct address (relative or absolute, depending on type), and patches the zero bytes with the real value</li>
+      </ol>
+      <p style="margin-top:8px;">Critically, the linker doesn't need to understand assembly — it just needs to know "compute distance to symbol X and write 4 bytes at offset Y." This clean separation is what makes the compilation model so powerful and parallelizable.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Q20 -->
+<div class="card" style="border-left:4px solid #c62828;">
+  <h3 style="color:#c62828;">Q20 🔴 — How would you create a cross-platform (Linux + Windows) export macro for a shared library? What are the differences between the two platforms?</h3>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Show Model Answer</summary>
+    <div style="margin-top:12px; padding:14px; background:#fff5f5; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p><strong>Platform differences:</strong></p>
+      <table style="margin-top:8px;">
+        <tr><th>Aspect</th><th>Linux (.so)</th><th>Windows (.dll)</th></tr>
+        <tr><td>Default visibility</td><td>All symbols exported (unless -fvisibility=hidden)</td><td>Nothing exported unless explicitly marked</td></tr>
+        <tr><td>Export syntax</td><td><code>__attribute__((visibility("default")))</code></td><td><code>__declspec(dllexport)</code></td></tr>
+        <tr><td>Import syntax</td><td>(same as export or nothing)</td><td><code>__declspec(dllimport)</code></td></tr>
+        <tr><td>Same header for build+use?</td><td>Yes — same attribute works</td><td>No — need dllexport when building, dllimport when using</td></tr>
+      </table>
+      <p style="margin-top:10px;"><strong>Standard cross-platform pattern:</strong></p>
+<pre style="margin:10px 0;"><span class="cmt">// mylib_export.h</span>
+<span class="hl">#ifdef _WIN32
+  #ifdef MYLIB_BUILDING_DLL
+    #define MYLIB_API __declspec(dllexport)
+  #else
+    #define MYLIB_API __declspec(dllimport)
+  #endif
+#else
+  #define MYLIB_API __attribute__((visibility("default")))
+#endif</span>
+
+<span class="cmt">// mylib.h — public header shipped to users</span>
+MYLIB_API <span class="kw">int</span> <span class="fn">do_something</span>(<span class="kw">int</span> x);</pre>
+      <p><strong>Usage:</strong></p>
+      <ul style="padding-left:20px; margin-top:6px;">
+        <li>When <em>building</em> the DLL/so: define <code>MYLIB_BUILDING_DLL</code> (via CMake <code>target_compile_definitions</code>) + pass <code>-fvisibility=hidden</code> on Linux</li>
+        <li>When <em>using</em> the library: just include the header — the macro automatically uses dllimport on Windows and default visibility on Linux</li>
+      </ul>
+      <p style="margin-top:8px;">This single header works correctly in both build contexts, which is why you often see this pattern in open-source libraries like OpenCV, Qt, and Boost.</p>
+    </div>
+  </details>
+</div>
+
+<!-- ════════════ QUICK FIRE ROUND ════════════ -->
+<div style="background:#e8eaf6; border-left:5px solid #5c6bc0; border-radius:10px; padding:14px 20px; margin:36px 0 12px;">
+  <span style="font-weight:800; color:#3949ab; font-size:15px;">⚡ QUICK-FIRE ROUND</span>
+  <span style="color:#555; font-size:13px; margin-left:10px;">Short-answer questions — test your recall!</span>
+</div>
+
+<div class="card">
+  <h3>⚡ 15 Quick Questions with Answers</h3>
+  <table>
+    <tr><th>#</th><th>Question</th><th>Answer</th></tr>
+    <tr>
+      <td>1</td>
+      <td>What tool lists symbols in an object file?</td>
+      <td><code>nm file.o</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>What does uppercase <code>T</code> mean in <code>nm</code> output?</td>
+      <td>Global symbol in the <code>.text</code> (code) section</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>What does lowercase <code>t</code> mean in <code>nm</code> output?</td>
+      <td>Local (hidden) symbol in the <code>.text</code> section</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>What does <code>U</code> mean in <code>nm</code> output?</td>
+      <td>Undefined — referenced but not defined in this file</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Can you strip a static library's symbol table after building the final executable?</td>
+      <td>Yes — <code>strip</code> removes <code>.symtab</code>; the code still runs</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>Can you strip the dynamic symbol table (<code>.dynsym</code>)?</td>
+      <td>No — it's needed at runtime by the dynamic linker</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>Why do templates have WEAK binding?</td>
+      <td>They're defined in headers → multiple TUs each compile a copy; WEAK lets the linker keep only one</td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td>What command shows C++ demangled symbol names?</td>
+      <td><code>nm -C file.o</code> or <code>nm --demangle file.o</code></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td>Does a local variable inside a function get a symbol?</td>
+      <td>No — it lives on the stack, found via stack-relative addressing</td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td>What does <code>-fvisibility=hidden</code> do?</td>
+      <td>Makes all symbols hidden by default; only explicitly marked ones go into <code>.dynsym</code></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td>What tool shows visibility information that <code>nm</code> doesn't?</td>
+      <td><code>readelf -s file.o</code></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td>How many pages of the C++23 standard describe dynamic linking?</td>
+      <td>Zero — dynamic linking is OS-specific, not part of the C++ standard</td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td>What is the difference between WEAK and UNIQUE symbol binding?</td>
+      <td>Both allow multiple copies; GLOBAL can override WEAK but NOT UNIQUE</td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td>Which C++17 feature produces UNIQUE symbols?</td>
+      <td><code>inline</code> variables (<code>inline int x = 5;</code> in a header)</td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td>What happens if you link without providing a definition for a referenced symbol?</td>
+      <td>Linker error: <code>undefined reference to 'symbol_name'</code></td>
+    </tr>
+  </table>
+</div>
+
+<!-- ════════════ TRICKY SCENARIO QUESTIONS ════════════ -->
+<div style="background:#f3e5f5; border-left:5px solid #7b1fa2; border-radius:10px; padding:14px 20px; margin:36px 0 12px;">
+  <span style="font-weight:800; color:#6a1b9a; font-size:15px;">🧩 TRICKY SCENARIO QUESTIONS</span>
+  <span style="color:#555; font-size:13px; margin-left:10px;">Think through these — often asked in system-design / debugging rounds</span>
+</div>
+
+<!-- Scenario A -->
+<div class="card" style="border-left:4px solid #7b1fa2;">
+  <h3 style="color:#6a1b9a;">🧩 Scenario A — The Mystery Bug</h3>
+  <p>Your team has a shared library used by 10 programs. After upgrading the library, one program started returning wrong results — but only on some machines. No code in that program changed. What could be causing this, and how would you investigate?</p>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Think Through It</summary>
+    <div style="margin-top:12px; padding:14px; background:#f9f0ff; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p><strong>Likely causes:</strong></p>
+      <ul style="padding-left:20px;">
+        <li><strong>ODR violation:</strong> Two different versions of a weak symbol exist in the process (e.g., the library and the executable both define a template function differently). The linker or dynamic linker picks one.</li>
+        <li><strong>Symbol interposition:</strong> With default visibility on Linux, a global symbol in the executable can override one in the .so — if the program defines a function with the same name as an internal library function, and that library function changed behavior.</li>
+        <li><strong>ABI break:</strong> The struct/class layout changed in the new library but the program was compiled against the old header.</li>
+      </ul>
+      <p style="margin-top:10px;"><strong>Investigation steps:</strong></p>
+      <ul style="padding-left:20px;">
+        <li>Run <code>nm -D libmylib.so</code> before and after upgrade — did any public symbol disappear or change?</li>
+        <li>Use <code>readelf -s</code> to check for duplicate symbol names between the executable and .so</li>
+        <li>Compile with <code>-Wl,--detect-odr-violations</code> (gold linker) or <code>-fsanitize=address</code></li>
+        <li>Use <code>-fvisibility=hidden</code> going forward to prevent symbol interposition</li>
+      </ul>
+    </div>
+  </details>
+</div>
+
+<!-- Scenario B -->
+<div class="card" style="border-left:4px solid #7b1fa2;">
+  <h3 style="color:#6a1b9a;">🧩 Scenario B — Duplicate Symbol</h3>
+  <p>You're getting <code>multiple definition of 'process'</code> at link time. You search your codebase and find <code>process()</code> defined in only ONE file. How is this possible, and how do you fix it?</p>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Think Through It</summary>
+    <div style="margin-top:12px; padding:14px; background:#f9f0ff; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p><strong>Most likely cause:</strong> The definition of <code>process()</code> is in a <strong>header file</strong>, not a <code>.cpp</code> file. Every <code>.cpp</code> file that includes that header gets its own copy of the definition, each producing a GLOBAL symbol — and the linker rejects multiple GLOBAL definitions.</p>
+      <p style="margin-top:8px;"><strong>Fix options:</strong></p>
+      <ul style="padding-left:20px;">
+        <li><strong>Move the definition</strong> to a single <code>.cpp</code> file; keep only the declaration in the header</li>
+        <li><strong>Mark it <code>inline</code></strong> — inline functions are allowed to be defined in multiple TUs (they become WEAK symbols)</li>
+        <li><strong>Mark it <code>static</code></strong> — gives LOCAL binding; each TU gets its own private copy (fine if unshared state is OK)</li>
+        <li><strong>Put it in an anonymous namespace</strong> — equivalent to <code>static</code> in C++</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>To diagnose:</strong> Run <code>nm *.o | grep ' T process'</code> — if multiple object files show <code>T process</code> (global), that confirms the duplicate definitions.</p>
+    </div>
+  </details>
+</div>
+
+<!-- Scenario C -->
+<div class="card" style="border-left:4px solid #7b1fa2;">
+  <h3 style="color:#6a1b9a;">🧩 Scenario C — Shrinking a Binary</h3>
+  <p>Your embedded system has tight flash memory constraints. Your <code>.so</code> is 4MB but you estimate the actual code is only 2MB. What techniques would you use to reduce the size?</p>
+  <details>
+    <summary style="cursor:pointer; font-weight:700; color:#5c6bc0; font-size:14px; padding:8px 0;">💡 Think Through It</summary>
+    <div style="margin-top:12px; padding:14px; background:#f9f0ff; border-radius:8px; font-size:14.5px; color:#333; line-height:1.8;">
+      <p><strong>Symbol-table related:</strong></p>
+      <ul style="padding-left:20px;">
+        <li><code>strip libfoo.so</code> — removes <code>.symtab</code> (can save 10–30% in debug builds)</li>
+        <li><code>strip --strip-debug libfoo.so</code> — removes DWARF debug info (often very large)</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>Dead code elimination:</strong></p>
+      <ul style="padding-left:20px;">
+        <li>Compile with <code>-ffunction-sections -fdata-sections</code> — puts each function/variable in its own section</li>
+        <li>Link with <code>-Wl,--gc-sections</code> — linker garbage-collects unused sections</li>
+        <li>Use <code>-fvisibility=hidden</code> — hidden symbols are better candidates for elimination</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>Compiler optimizations:</strong></p>
+      <ul style="padding-left:20px;">
+        <li><code>-Os</code> — optimize for size instead of speed</li>
+        <li><code>-flto</code> (Link Time Optimization) — cross-file inlining and dead code removal</li>
+      </ul>
+      <p style="margin-top:8px;"><strong>Verify what's taking space:</strong></p>
+<pre style="margin:8px 0;">nm --size-sort -r libfoo.so | head -20   <span class="cmt">← largest symbols</span>
+readelf -S libfoo.so                     <span class="cmt">← section sizes</span></pre>
+    </div>
+  </details>
+</div>
+
+<footer>
+  Notes based on: <em>"How Linux ELF Symbols Work"</em> — Anders Schau Knatten, C++ on Sea 2024<br>
+  More resources: <a href="https://cppquiz.org" style="color:#5c6bc0;">cppquiz.org</a> | Book: <em>C++ Brain Teasers</em>
+</footer>
+
+</div><!-- /container -->
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a0438ff37e4b85d9',t:'MTc4MDIwNTE3MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
